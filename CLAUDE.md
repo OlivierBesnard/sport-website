@@ -23,8 +23,11 @@ Le plan complet est dans `docs/PLAN.md` et le découpage en étapes dans `docs/B
 ## Commandes
 
 - `pnpm install`
-- `pnpm check` : lint + typecheck + tests. Doit passer avant tout commit.
-- `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`
+- `pnpm check` : lint + typecheck + tests. Avant chaque commit, lancer `pnpm check` puis `pnpm build` en local : les deux doivent passer.
+- `pnpm lint` : Biome en vérification (lint, formatage, ordre des imports) ; `pnpm format` : Biome applique formatage et corrections sûres
+- `pnpm typecheck` : `tsc --noEmit` dans chaque paquet (Turborepo) et sur les fichiers TypeScript de la racine
+- `pnpm test` : Vitest lancé à la racine, un projet par paquet de `apps/*`, `packages/*`, `modules/*`
+- `pnpm build` : Turborepo (`tsc -p tsconfig.build.json` vers `dist/` pour les paquets)
 
 ## Conventions
 
@@ -32,7 +35,8 @@ Le plan complet est dans `docs/PLAN.md` et le découpage en étapes dans `docs/B
 - Chaque fonctionnalité arrive avec ses tests. Ne jamais désactiver un test ou une règle de lint pour faire passer la vérification.
 - Pas de dépendance sans nécessité ; `pnpm-lock.yaml` toujours à jour.
 - Aucun secret dans le code ni dans les tests : les clés de test sont générées à la volée.
-- Développement sous Windows, CI sous Linux : scripts multiplateformes uniquement (pas de `rm -rf`, de variables d'environnement inline ni de chemins en dur avec `\` ou `/`).
+- Développement sous Windows, exécution sous Linux (image Docker) : scripts multiplateformes uniquement (pas de `rm -rf`, de variables d'environnement inline ni de chemins en dur avec `\` ou `/`). Fins de ligne LF partout (normalisées par `.gitattributes` ; Biome les vérifie aussi dans le code, le JSON et le YAML).
+- Paquets internes : `tsconfig.json` étend `@sport-cms/config/tsconfig.base.json`, `tsconfig.build.json` étend `@sport-cms/config/tsconfig.build.json`. Dans `package.json`, `exports["."]` déclare en premier la condition `"@sport-cms/source": "./src/index.ts"`, puis `types` et `default` vers `dist/`. L'exécution et TypeScript utilisent `dist/`, que Turborepo construit pour les dépendances avant `typecheck` et `build`. Les tests, eux, activent la condition `@sport-cms/source` (`ssr.resolve.conditions` dans `vitest.config.ts`) : ils importent toujours les sources, jamais un `dist/` absent ou périmé.
 - Données d'exécution dans `DATA_DIR` (par défaut `./data`, ignoré par Git).
 
 ## Processus de développement

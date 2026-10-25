@@ -1,1 +1,29 @@
 /docs
+
+# Dependencies
+node_modules/
+
+# Build outputs and caches
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Runtime data (DATA_DIR)
+/data/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

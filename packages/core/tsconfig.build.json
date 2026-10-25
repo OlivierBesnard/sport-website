@@ -1,0 +1,3 @@
+{
+  "extends": "@sport-cms/config/tsconfig.build.json"
+}
