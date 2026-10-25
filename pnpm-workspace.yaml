@@ -5,5 +5,16 @@ packages:
 
 catalog:
   "@types/node": ^24.19.2
+  drizzle-orm: ^0.45.4
   typescript: ^7.0.2
   vitest: ^5.0.5
+  zod: ^4.6.7
+
+# Dependency build scripts, explicitly denied because none is needed:
+# - better-sqlite3 ships prebuilt binaries for every supported platform (Windows, Linux glibc
+#   and musl, macOS; x64 and arm64). pnpm only sees its binding.gyp, and allowing it would
+#   run node-gyp, which needs a C++ toolchain.
+# - esbuild (used by drizzle-kit) finds its platform binary without its postinstall check.
+allowBuilds:
+  better-sqlite3: false
+  esbuild: false

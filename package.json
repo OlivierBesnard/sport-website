@@ -14,7 +14,8 @@
     "typecheck": "turbo run typecheck && tsc --noEmit",
     "test": "vitest run",
     "build": "turbo run build",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "db:generate": "pnpm --filter @sport-cms/db db:generate"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

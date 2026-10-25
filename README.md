@@ -19,20 +19,21 @@ pnpm build
 
 ## Commandes
 
-| Commande         | Rôle                                                         |
-| ---------------- | ------------------------------------------------------------ |
-| `pnpm install`   | Installe les dépendances de tout le monorepo                 |
-| `pnpm lint`      | Vérifie le lint, le formatage et l'ordre des imports (Biome) |
-| `pnpm format`    | Applique le formatage et les corrections sûres (Biome)       |
-| `pnpm typecheck` | Vérifie les types TypeScript de chaque paquet (Turborepo)    |
-| `pnpm test`      | Lance les tests (Vitest, un projet par paquet)               |
-| `pnpm build`     | Construit les paquets (Turborepo, avec cache)                |
-| `pnpm check`     | Lint, typecheck et tests : doit passer avant tout commit     |
+| Commande                        | Rôle                                                          |
+| ------------------------------- | ------------------------------------------------------------- |
+| `pnpm install`                  | Installe les dépendances de tout le monorepo                  |
+| `pnpm lint`                     | Vérifie le lint, le formatage et l'ordre des imports (Biome)  |
+| `pnpm format`                   | Applique le formatage et les corrections sûres (Biome)        |
+| `pnpm typecheck`                | Vérifie les types TypeScript de chaque paquet (Turborepo)     |
+| `pnpm test`                     | Lance les tests (Vitest, un projet par paquet)                |
+| `pnpm build`                    | Construit les paquets (Turborepo, avec cache)                 |
+| `pnpm check`                    | Lint, typecheck et tests : doit passer avant tout commit      |
+| `pnpm db:generate --name <nom>` | Génère la migration SQL après une modification du schéma      |
 
 ## Organisation
 
 - `apps/` : applications (serveur, back-office, superviseur), à venir
-- `packages/` : paquets partagés (`config` pour les configurations TypeScript, `core` pour le noyau)
+- `packages/` : paquets partagés (`config` pour les configurations TypeScript, `core` pour le noyau et la configuration d'exécution, `db` pour la base SQLite et ses migrations)
 - `modules/` : modules officiels, à venir
 
 ## Licence

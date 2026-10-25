@@ -9,14 +9,23 @@
       "@sport-cms/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./config": {
+      "@sport-cms/source": "./src/config.ts",
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@sport-cms/config": "workspace:*",
+    "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -1,0 +1,35 @@
+{
+  "name": "@sport-cms/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Base de données SQLite : schéma Drizzle et migrations",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@sport-cms/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@sport-cms/config": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "catalog:",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
