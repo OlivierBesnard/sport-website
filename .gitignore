@@ -9,8 +9,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# Runtime data (DATA_DIR)
+# Runtime data (DATA_DIR, relative to the directory the server is started from)
 /data/
+/apps/*/data/
 
 # Environment files
 .env

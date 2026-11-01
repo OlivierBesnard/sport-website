@@ -1,0 +1,4 @@
+{
+  "extends": "@sport-cms/config/tsconfig.base.json",
+  "include": ["src"]
+}

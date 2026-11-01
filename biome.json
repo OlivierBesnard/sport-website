@@ -20,6 +20,9 @@
     "enabled": true,
     "rules": {
       "preset": "recommended"
+    },
+    "domains": {
+      "react": "recommended"
     }
   },
   "markdown": {

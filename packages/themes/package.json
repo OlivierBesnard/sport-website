@@ -1,0 +1,23 @@
+{
+  "name": "@sport-cms/themes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Thèmes du site public : design tokens, variables CSS et styles de base des blocs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@sport-cms/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@sport-cms/config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

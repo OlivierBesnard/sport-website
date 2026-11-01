@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BUSY_TIMEOUT_MS,
   createTestDatabase,
+  DATABASE_FILE_NAME,
   type Database,
+  databasePath,
   IN_MEMORY,
   migrate,
   modules,
@@ -91,6 +93,14 @@ describe("openDatabase", () => {
     expect(reader.select({ title: pages.title }).from(pages).all()).toEqual([
       { title: "Accueil modifié" },
     ]);
+  });
+
+  it("opens the instance database file at the root of the data directory", () => {
+    const dataDir = join(tempDir, "Données du club");
+    expect(databasePath(dataDir)).toBe(join(dataDir, DATABASE_FILE_NAME));
+    const db = open(databasePath(dataDir));
+    migrate(db);
+    expect(existsSync(join(dataDir, "database.sqlite"))).toBe(true);
   });
 
   it("gives Drizzle typed access to every table", () => {

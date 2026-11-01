@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import Sqlite from "better-sqlite3";
 import { type BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema/index.js";
@@ -12,6 +12,17 @@ export const BUSY_TIMEOUT_MS = 5000;
 
 /** Path that opens a private database living in memory, gone once closed. */
 export const IN_MEMORY = ":memory:";
+
+/**
+ * Name of the instance database file, at the root of `DATA_DIR`. SQLite keeps its `-wal` and
+ * `-shm` files next to it while the database is open.
+ */
+export const DATABASE_FILE_NAME = "database.sqlite";
+
+/** Path of the instance database inside the data directory `dataDir`. */
+export function databasePath(dataDir: string): string {
+  return join(dataDir, DATABASE_FILE_NAME);
+}
 
 /**
  * Opens (and creates if needed, along with its parent directories) the SQLite database at
