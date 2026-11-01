@@ -1,3 +1,4 @@
+import { createSecretKey, randomBytes } from "node:crypto";
 import { coreBlocks, createBlockRegistry, defineBlock } from "@sport-cms/blocks";
 import {
   createTestDatabase,
@@ -35,7 +36,13 @@ afterEach(() => {
 });
 
 function app(overrides: Partial<AppDependencies> = {}) {
-  return createApp({ db, baseUrl: BASE_URL, logger, ...overrides });
+  return createApp({
+    db,
+    baseUrl: BASE_URL,
+    secretKey: createSecretKey(randomBytes(32)),
+    logger,
+    ...overrides,
+  });
 }
 
 function heading(text: string, id = `Heading-${text}`): JsonObject {
@@ -525,6 +532,12 @@ describe("security headers", () => {
   it("are set on pages", async () => {
     publish({ path: "/club" });
     expectSecurityHeaders(await app().request("/club"));
+  });
+
+  it("are set on the API paths too, even when nothing answers there", async () => {
+    const response = await app().request("/api/inconnue");
+    expect(response.status).toBe(404);
+    expectSecurityHeaders(response);
   });
 
   it("add Strict-Transport-Security only when the site is served over HTTPS", async () => {

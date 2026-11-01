@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, type KeyObject } from "node:crypto";
 import {
   type BlockRegistry,
   coreBlocks,
@@ -30,6 +30,11 @@ export interface AppDependencies {
   readonly db: Database;
   /** Public origin of the site, without trailing slash (`RuntimeConfig.baseUrl`). */
   readonly baseUrl: string;
+  /**
+   * Instance secret (`RuntimeConfig.secretKey`), signing the session cookies of the auth API
+   * (registered by `routes`) and, later, encrypting the secrets at rest.
+   */
+  readonly secretKey: KeyObject;
   /** Rendered pages; pass one to invalidate pages from elsewhere (publication…). */
   readonly htmlCache?: HtmlCache;
   /**

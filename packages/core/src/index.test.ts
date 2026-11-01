@@ -2,8 +2,16 @@ import { describe, expect, it } from "vitest";
 import * as root from "./index.js";
 
 describe("root entry of @sport-cms/core", () => {
-  it("leaves out the runtime configuration, which needs Node.js built-ins", () => {
-    expect(Object.keys(root).sort()).toEqual(["encodePagePath", "normalizePagePath", "slugify"]);
+  it("exports the domain helpers and the roles, but no Node.js built-ins", () => {
+    expect(Object.keys(root).sort()).toEqual([
+      "CORE_PERMISSIONS",
+      "ROLES",
+      "ROLE_PERMISSIONS",
+      "can",
+      "encodePagePath",
+      "normalizePagePath",
+      "slugify",
+    ]);
     expect(root).not.toHaveProperty("parseRuntimeConfig");
   });
 });

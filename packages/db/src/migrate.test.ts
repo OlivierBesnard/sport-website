@@ -21,6 +21,7 @@ import * as schema from "./schema/index.js";
 import { writeMigrations } from "./test-migrations.js";
 
 const EXPECTED_TABLES = [
+  "account",
   "audit_log",
   "event_deliveries",
   "inbound_webhooks",
@@ -32,7 +33,10 @@ const EXPECTED_TABLES = [
   "outbox_events",
   "page_versions",
   "pages",
+  "session",
   "settings",
+  "user",
+  "verification",
 ];
 
 type JournalEntry = { idx: number; tag: string; when: number };

@@ -33,7 +33,7 @@ Le serveur lit sa configuration dans les variables d'environnement :
 | `DATA_DIR`   | Dossier des données (base `database.sqlite`, médias…)      | `./data`                 |
 | `PORT`       | Port HTTP                                                  | `3000`                   |
 | `BASE_URL`   | Adresse publique du site, sans chemin                      | `http://localhost:PORT`  |
-| `SECRET_KEY` | Clé de chiffrement (32 octets en base64), pas encore utile | aucune                   |
+| `SECRET_KEY` | Clé des sessions et des secrets (32 octets en base64), requise : `openssl rand -base64 32` | aucune                   |
 
 `DATA_DIR` est relatif au dossier de lancement : avec `pnpm --filter`, c'est `apps/server`, donc les données vont par défaut dans `apps/server/data` (ignoré par Git). La base y est créée et migrée au démarrage. Les pages de démonstration ne sont jamais ajoutées automatiquement : seule la commande `seed:demo` le fait.
 

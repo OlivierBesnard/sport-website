@@ -1,4 +1,5 @@
 export { auditLog } from "./audit.js";
+export { account, session, user, verification } from "./auth.js";
 export {
   eventDeliveries,
   INBOUND_WEBHOOK_STATUSES,

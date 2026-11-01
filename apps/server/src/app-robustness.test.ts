@@ -1,5 +1,7 @@
 // Tests added by the tester (E03): stored data the back-office could not have written, cache
 // growth, redirects to other hosts and a few document details.
+
+import { createSecretKey, randomBytes } from "node:crypto";
 import {
   createTestDatabase,
   type Database,
@@ -28,7 +30,13 @@ afterEach(() => {
 });
 
 function app(overrides: Partial<AppDependencies> = {}) {
-  return createApp({ db, baseUrl: BASE_URL, logger, ...overrides });
+  return createApp({
+    db,
+    baseUrl: BASE_URL,
+    secretKey: createSecretKey(randomBytes(32)),
+    logger,
+    ...overrides,
+  });
 }
 
 function heading(text: string, id = `Heading-${text}`): JsonObject {

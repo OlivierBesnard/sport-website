@@ -21,6 +21,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@sport-cms/core": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "catalog:"
   },

@@ -17,10 +17,12 @@
     "@sport-cms/core": "workspace:*",
     "@sport-cms/db": "workspace:*",
     "@sport-cms/themes": "workspace:*",
+    "better-auth": "^1.7.15",
     "drizzle-orm": "catalog:",
     "hono": "^4.13.14",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@sport-cms/config": "workspace:*",

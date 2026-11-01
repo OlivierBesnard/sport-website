@@ -1,6 +1,8 @@
 import { serve } from "@hono/node-server";
 import { RuntimeConfigError } from "@sport-cms/core/config";
 import { createApp } from "./app.js";
+import { createAuth } from "./auth/create-auth.js";
+import { authRoutes } from "./auth/routes.js";
 import { type Instance, openInstance } from "./instance.js";
 
 /** Entry point of the server: `pnpm --filter @sport-cms/server start` (or `dev`). */
@@ -18,7 +20,26 @@ function main(): void {
   }
 
   const { config, db } = instance;
-  const app = createApp({ db, baseUrl: config.baseUrl });
+  if (config.secretKey === undefined) {
+    // The auth API needs it to sign the session cookies; without it, an instance could not
+    // keep its sessions across a restart, so it refuses to start instead.
+    console.error(
+      "La variable SECRET_KEY est requise : une clé de 256 bits en base64, à générer par " +
+        "exemple avec « openssl rand -base64 32 ». Elle protège les sessions et les secrets " +
+        "de l'instance.",
+    );
+    db.$client.close();
+    process.exitCode = 1;
+    return;
+  }
+
+  const auth = createAuth({ db, baseUrl: config.baseUrl, secretKey: config.secretKey });
+  const app = createApp({
+    db,
+    baseUrl: config.baseUrl,
+    secretKey: config.secretKey,
+    routes: authRoutes({ auth, db }),
+  });
   const server = serve({ fetch: app.fetch, port: config.port }, () => {
     console.info(`Site public : ${config.baseUrl} (port ${config.port})`);
     console.info(`Données : ${config.dataDir}`);

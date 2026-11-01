@@ -1,3 +1,4 @@
+export { type AuditEntry, writeAudit } from "./audit.js";
 export {
   BUSY_TIMEOUT_MS,
   DATABASE_FILE_NAME,

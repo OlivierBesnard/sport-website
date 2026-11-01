@@ -1,3 +1,4 @@
+import { createSecretKey, randomBytes } from "node:crypto";
 import { coreBlocks } from "@sport-cms/blocks";
 import { createTestDatabase, type Database, pages } from "@sport-cms/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,7 +62,12 @@ describe("seedDemoContent", () => {
   it("gives a home page served by the public site", async () => {
     seedDemoContent(db);
     const logger = { error: vi.fn() };
-    const app = createApp({ db, baseUrl: "http://localhost:3000", logger });
+    const app = createApp({
+      db,
+      baseUrl: "http://localhost:3000",
+      secretKey: createSecretKey(randomBytes(32)),
+      logger,
+    });
 
     const home = await app.request("/");
     expect(home.status).toBe(200);
