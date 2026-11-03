@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { RuntimeConfigError } from "@sport-cms/core/config";
+import { adminBuildDirectory, adminRoutes } from "./admin.js";
 import { createApp } from "./app.js";
 import { createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
@@ -34,14 +35,21 @@ function main(): void {
   }
 
   const auth = createAuth({ db, baseUrl: config.baseUrl, secretKey: config.secretKey });
+  // The back-office (`apps/admin` build) is served under /admin; a 503 page replaces it when
+  // the build is absent (development without `pnpm build`), without stopping the server.
+  const adminDirectory = adminBuildDirectory();
   const app = createApp({
     db,
     baseUrl: config.baseUrl,
     secretKey: config.secretKey,
-    routes: authRoutes({ auth, db }),
+    routes: (routes) => {
+      adminRoutes({ directory: adminDirectory })(routes);
+      authRoutes({ auth, db })(routes);
+    },
   });
   const server = serve({ fetch: app.fetch, port: config.port }, () => {
     console.info(`Site public : ${config.baseUrl} (port ${config.port})`);
+    console.info(`Back-office : ${config.baseUrl}/admin`);
     console.info(`Données : ${config.dataDir}`);
   });
 

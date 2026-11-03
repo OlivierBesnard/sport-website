@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
+  "globalEnv": ["TEST_WORKER_INDEX"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

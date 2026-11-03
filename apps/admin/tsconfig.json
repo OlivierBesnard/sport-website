@@ -1,0 +1,10 @@
+{
+  "extends": "@sport-cms/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["es2025", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client"]
+  },
+  "include": ["src", "vite.config.ts"]
+}

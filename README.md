@@ -26,6 +26,8 @@ pnpm --filter @sport-cms/server dev         # serveur sur http://localhost:3000,
 
 `dev` exécute directement les sources TypeScript (avec `tsx`) : aucun `pnpm build` n'est nécessaire. Pour lancer la version construite, comme en production : `pnpm build`, puis `pnpm --filter @sport-cms/server start`.
 
+Le back-office est servi par le même serveur sous `http://localhost:3000/admin`, d'après le build de `apps/admin` (`pnpm build` ; sans build, une page 503 l'indique). Pour développer le back-office lui-même : `pnpm --filter @sport-cms/admin dev` (interface sur http://localhost:5173/admin/, API mandatée vers le serveur sur le port 3000).
+
 Le serveur lit sa configuration dans les variables d'environnement :
 
 | Variable     | Rôle                                                       | Par défaut               |
@@ -47,6 +49,7 @@ Le serveur lit sa configuration dans les variables d'environnement :
 | `pnpm typecheck`                           | Vérifie les types TypeScript de chaque paquet (Turborepo)     |
 | `pnpm test`                                | Lance les tests (Vitest, un projet par paquet)                |
 | `pnpm build`                               | Construit les paquets et le serveur (Turborepo, avec cache)   |
+| `pnpm test:e2e`                            | Tests de bout en bout Playwright sur le serveur compilé (installe les navigateurs au premier lancement : `pnpm exec playwright install chromium`) |
 | `pnpm check`                               | Lint, typecheck et tests : doit passer avant tout commit      |
 | `pnpm db:generate --name <nom>`            | Génère la migration SQL après une modification du schéma      |
 | `pnpm --filter @sport-cms/server dev`      | Lance le serveur depuis les sources, relancé à chaque modification |
@@ -55,7 +58,7 @@ Le serveur lit sa configuration dans les variables d'environnement :
 
 ## Organisation
 
-- `apps/` : applications ; `server` sert le site public (le back-office et le superviseur sont à venir)
+- `apps/` : applications ; `server` sert le site public et le back-office, `admin` est l'interface du back-office (le superviseur est à venir)
 - `packages/` : paquets partagés (`config` pour les configurations TypeScript, `core` pour le noyau et la configuration d'exécution, `db` pour la base SQLite et ses migrations, `blocks` pour les blocs de page et leur rendu, `themes` pour les thèmes et les styles du site)
 - `modules/` : modules officiels, à venir
 

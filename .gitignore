@@ -9,6 +9,12 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# End-to-end tests (Playwright)
+test-results/
+playwright-report/
+blob-report/
+.playwright-data/
+
 # Runtime data (DATA_DIR, relative to the directory the server is started from)
 /data/
 /apps/*/data/
