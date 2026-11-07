@@ -6,11 +6,18 @@ import {
   safeImageUrl,
 } from "@sport-cms/blocks";
 import { loadPageBlocks, renderPageContent } from "@sport-cms/blocks/server";
-import { encodePagePath, normalizePagePath, type SportReader } from "@sport-cms/core";
+import {
+  type ContentReader,
+  encodePagePath,
+  normalizePagePath,
+  type SportReader,
+} from "@sport-cms/core";
 import type { Database } from "@sport-cms/db";
 import { buildThemeCss, defaultTheme, type ThemeTokens } from "@sport-cms/themes";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { findPostPage, postArticleBlock } from "./content/post-page.js";
+import { createContentReader } from "./content/reader.js";
 import { type CacheTicket, HtmlCache } from "./html-cache.js";
 import { DEFAULT_MENU, readNavigation } from "./navigation.js";
 import { findPublishedPage, type PublishedPage } from "./pages.js";
@@ -54,6 +61,8 @@ export interface AppDependencies {
   readonly logger?: Logger;
   /** Sports content read by the blocks bound to it (the database of `db` by default). */
   readonly sport?: SportReader;
+  /** News, partners and media read by the blocks (the database of `db` by default). */
+  readonly content?: ContentReader;
   /** Clock of the rendering ("upcoming" matches are relative to it). */
   readonly now?: () => Date;
   /**
@@ -137,6 +146,22 @@ export function createApp(dependencies: AppDependencies): Hono {
   const { db, baseUrl, htmlCache = new HtmlCache(), logger = console, routes } = dependencies;
   const now = dependencies.now ?? (() => new Date());
   const sport = dependencies.sport ?? createSportReader(db, now);
+  const contentReader = dependencies.content ?? createContentReader(db, now);
+
+  let renderRegistry: { readonly blocks: BlockRegistry; readonly value: BlockRegistry } | undefined;
+  /**
+   * The blocks the pages render with: those of `blocks`, plus the article of the pages of the
+   * news (a block of the server, never offered by the editor), rebuilt when `blocks` changes.
+   */
+  function renderingBlocks(registry: BlockRegistry): BlockRegistry {
+    if (renderRegistry?.blocks !== registry) {
+      renderRegistry = {
+        blocks: registry,
+        value: createBlockRegistry([...registry.values(), postArticleBlock]),
+      };
+    }
+    return renderRegistry.value;
+  }
   const coreRegistry = createBlockRegistry(coreBlocks);
   const blocks = dependencies.blocks ?? (() => coreRegistry);
   const theme = dependencies.theme ?? (() => defaultTheme);
@@ -221,6 +246,7 @@ export function createApp(dependencies: AppDependencies): Hono {
       onBlockError,
       context: {
         sport,
+        content: contentReader,
         now: now(),
         expiresAt: (date) => {
           const time = date.getTime();
@@ -274,18 +300,21 @@ export function createApp(dependencies: AppDependencies): Hono {
   // Before the routes of the API: a write from another site never reaches them, nor does a body
   // too large for any of them (the pages, the biggest, weigh a few hundred kilobytes at most).
   app.use("/api/*", sameOriginWrites(baseUrl));
-  app.use(
-    "/api/*",
-    bodyLimit({
-      maxSize: MAX_API_BODY_BYTES,
-      onError: (context) =>
-        context.json(
-          {
-            error: `La requête est trop volumineuse (${MAX_API_BODY_BYTES / 1024 / 1024} Mo au maximum).`,
-          },
-          413,
-        ),
-    }),
+  const apiBodyLimit = bodyLimit({
+    maxSize: MAX_API_BODY_BYTES,
+    onError: (context) =>
+      context.json(
+        {
+          error: `La requête est trop volumineuse (${MAX_API_BODY_BYTES / 1024 / 1024} Mo au maximum).`,
+        },
+        413,
+      ),
+  });
+  // The upload of an image has its own, larger limit (`POST /api/media`).
+  app.use("/api/*", (context, next) =>
+    context.req.method === "POST" && context.req.path === "/api/media"
+      ? next()
+      : apiBodyLimit(context, next),
   );
   routes?.(app);
 
@@ -323,14 +352,14 @@ export function createApp(dependencies: AppDependencies): Hono {
     // Taken before the page is read: if it is invalidated while it renders, the HTML of this
     // render is served once but not cached.
     const ticket = htmlCache.ticket(path);
-    const page = findPublishedPage(db, path);
+    const page = findPublishedPage(db, path) ?? findPostPage(db, path);
     if (page === undefined) {
       return context.notFound();
     }
     const { html, complete, dependencies, expiresAt } = await renderPage(
       path,
       page,
-      registry,
+      renderingBlocks(registry),
       ticket,
     );
     if (complete) {

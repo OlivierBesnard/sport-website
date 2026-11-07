@@ -1,8 +1,7 @@
-import type { ReferenceSource } from "@sport-cms/blocks";
-import type { CalendarEventKind, SportReader, TeamGender } from "@sport-cms/core";
+import type { CalendarEventKind, TeamGender } from "@sport-cms/core";
 import { requestJson } from "./client";
 
-/** Typed client of the admin API of the sports content (`/api/sport`, `/api/sport-blocks`). */
+/** Typed client of the admin API of the sports content (`/api/sport`). */
 
 export interface Section {
   readonly id: number;
@@ -221,35 +220,3 @@ export async function saveEvent(
 export async function deleteEvent(id: number): Promise<void> {
   await requestJson<unknown>(`/api/sport/events/${id}`, { method: "DELETE", fallback: DELETE });
 }
-
-/** A choice of a `reference` field of the blocks. */
-export interface ReferenceOption {
-  readonly value: number;
-  readonly label: string;
-}
-
-export type ReferenceOptions = Readonly<Record<ReferenceSource, readonly ReferenceOption[]>>;
-
-/** The choices of the `reference` fields of the editor. */
-export async function fetchReferences(): Promise<ReferenceOptions> {
-  return requestJson<ReferenceOptions>("/api/sport-blocks/references", {
-    fallback: "Impossible de charger les équipes, sections et lieux.",
-  });
-}
-
-async function read<T>(method: string, query: unknown): Promise<T> {
-  const body = await requestJson<{ result: T }>(
-    `/api/sport-blocks/read?method=${method}&query=${encodeURIComponent(JSON.stringify(query))}`,
-    { fallback: "Impossible de charger les données du bloc." },
-  );
-  return body.result;
-}
-
-/** The sports content of the instance, for the preview of the blocks bound to it. */
-export const apiSportReader: SportReader = {
-  matches: (query) => read("matches", query),
-  teams: (query) => read("teams", query),
-  team: (id) => read("team", { id }),
-  trainingSlots: (query) => read("trainingSlots", query),
-  venues: (query) => read("venues", query),
-};

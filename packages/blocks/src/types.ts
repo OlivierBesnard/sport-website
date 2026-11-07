@@ -1,4 +1,4 @@
-import type { SportReader } from "@sport-cms/core";
+import type { ContentReader, SportReader } from "@sport-cms/core";
 import type { ElementType, ReactNode } from "react";
 
 /*
@@ -62,13 +62,19 @@ export interface RadioField<Value extends OptionValue = OptionValue> extends Bas
 }
 
 /** Kinds of rows a {@link ReferenceField} can point at. */
-export const REFERENCE_SOURCES = ["teams", "sections", "venues"] as const;
+export const REFERENCE_SOURCES = [
+  "teams",
+  "sections",
+  "venues",
+  "postCategories",
+  "media",
+] as const;
 export type ReferenceSource = (typeof REFERENCE_SOURCES)[number];
 
 /**
- * The id of a row of the sports content (a team, a section, a venue), chosen in a list the editor
- * fills from the instance; stored as a number, `0` for none. A block shows nothing, or all rows,
- * for `0`, and must expect an id whose row was deleted since.
+ * The id of a row of the instance (a team, a section, a venue, a news category, an image), chosen
+ * in a list the editor fills from the instance; stored as a number, `0` for none. A block shows
+ * nothing, or all rows, for `0`, and must expect an id whose row was deleted since.
  */
 export interface ReferenceField extends BaseField {
   readonly type: "reference";
@@ -174,6 +180,8 @@ export type BlockRenderProps<Props extends BlockProps, Data = undefined> = WithS
 export interface BlockLoaderContext {
   /** Sports content of the instance (public data only). */
   readonly sport: SportReader;
+  /** News, partners and media of the instance (public data only). */
+  readonly content: ContentReader;
   /** Time of the rendering: what is "upcoming" is relative to it. */
   readonly now: Date;
   /**

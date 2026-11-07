@@ -21,6 +21,21 @@ const MENU: readonly {
   { to: "/pages", label: "Pages", enabled: true, end: false },
   { to: "/navigation", label: "Navigation", enabled: true, end: false },
   {
+    to: "/actualites",
+    label: "Actualités",
+    enabled: true,
+    end: true,
+    permissions: ["pages.edit"],
+  },
+  { to: "/medias", label: "Médias", enabled: true, end: true, permissions: ["pages.edit"] },
+  {
+    to: "/partenaires",
+    label: "Partenaires",
+    enabled: true,
+    end: true,
+    permissions: ["pages.edit"],
+  },
+  {
     to: "/sport/equipes",
     label: "Équipes",
     enabled: true,

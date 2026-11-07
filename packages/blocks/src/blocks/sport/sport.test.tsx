@@ -95,7 +95,17 @@ async function render(
   const onBlockError = vi.fn();
   const loaded = await loadPageBlocks(data, {
     registry,
-    context: { sport, now: new Date(kickOff - 86_400_000), expiresAt },
+    context: {
+      sport,
+      content: {
+        posts: async () => [],
+        post: async () => null,
+        partners: async () => ({ partners: [], nextChange: null }),
+        media: async () => [],
+      },
+      now: new Date(kickOff - 86_400_000),
+      expiresAt,
+    },
     onBlockError,
   });
   const html = renderToStaticMarkup(renderPageContent(data, { registry, loaded, onBlockError }));

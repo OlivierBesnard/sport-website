@@ -4,6 +4,13 @@ import type { PageData } from "@sport-cms/blocks";
 import { buildThemeCss, defaultTheme } from "@sport-cms/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import {
+  apiContentReader,
+  apiSportReader,
+  fetchReferences,
+  NO_REFERENCES,
+  type ReferenceOptions,
+} from "../api/block-data";
 import { ApiError } from "../api/errors";
 import {
   fetchPage,
@@ -14,7 +21,6 @@ import {
   restoreVersion,
   saveDraft,
 } from "../api/pages";
-import { apiSportReader, fetchReferences, type ReferenceOptions } from "../api/sport";
 import { Button, FormError } from "../components/ui";
 import {
   BlockDataContext,
@@ -123,7 +129,7 @@ export function PageEditorPage() {
       // Without them, the lists of the blocks stay empty: the rest of the editor works.
       () => {
         if (current) {
-          setReferences({ teams: [], sections: [], venues: [] });
+          setReferences(NO_REFERENCES);
         }
       },
     );
@@ -131,7 +137,10 @@ export function PageEditorPage() {
       current = false;
     };
   }, []);
-  const blockData = useMemo(() => ({ sport: apiSportReader, references }), [references]);
+  const blockData = useMemo(
+    () => ({ sport: apiSportReader, content: apiContentReader, references }),
+    [references],
+  );
 
   /**
    * Configuration of Puck: the registry, plus a stand-in for each block type of the saved draft

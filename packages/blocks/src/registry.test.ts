@@ -9,10 +9,13 @@ describe("createBlockRegistry", () => {
     expect([...registry.keys()].sort()).toEqual([
       "Button",
       "Columns",
+      "Gallery",
       "Heading",
       "Hero",
       "Image",
       "LatestResults",
+      "NewsList",
+      "Partners",
       "RichText",
       "Section",
       "TeamGrid",

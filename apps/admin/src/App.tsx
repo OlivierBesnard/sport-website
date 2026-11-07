@@ -6,6 +6,9 @@ import { fetchSetupStatus } from "./api/setup";
 import { ComingSoonPage, Shell } from "./components/Shell";
 import { BootError, BootSplash } from "./components/Splash";
 import { ModulesProvider } from "./modules/context";
+import { MediaPage } from "./routes/content/MediaPage";
+import { PartnersPage } from "./routes/content/PartnersPage";
+import { PostsPage } from "./routes/content/PostsPage";
 import { DashboardPage } from "./routes/DashboardPage";
 import { ModuleAdminPage } from "./routes/ModuleAdminPage";
 import { ModulesPage } from "./routes/ModulesPage";
@@ -104,6 +107,9 @@ export function App() {
           <Route index element={<DashboardPage clubName={boot.clubName} user={boot.user} />} />
           <Route path="pages" element={<PagesPage />} />
           <Route path="navigation" element={<NavigationPage />} />
+          <Route path="actualites" element={<PostsPage />} />
+          <Route path="medias" element={<MediaPage />} />
+          <Route path="partenaires" element={<PartnersPage />} />
           <Route path="sport/equipes" element={<TeamsPage user={boot.user} />} />
           <Route path="sport/calendrier" element={<CalendarPage user={boot.user} />} />
           <Route path="sport/saisons" element={<SeasonsPage />} />

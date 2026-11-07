@@ -19,6 +19,9 @@ catalog:
 #   and musl, macOS; x64 and arm64). pnpm only sees its binding.gyp, and allowing it would
 #   run node-gyp, which needs a C++ toolchain.
 # - esbuild (used by drizzle-kit) finds its platform binary without its postinstall check.
+# - sharp loads the prebuilt libvips of its `@img/sharp-*` optional dependency (one per
+#   platform); its install script would only check for it, or try to build from source.
 allowBuilds:
   better-sqlite3: false
   esbuild: false
+  sharp: false

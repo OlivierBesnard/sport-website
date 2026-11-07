@@ -558,6 +558,136 @@ a {
     aspect-ratio: 16 / 9;
   }
 }
+
+.cms-news,
+.cms-partners,
+.cms-gallery {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .cms-news {
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  }
+}
+
+.cms-news-card {
+  overflow: hidden;
+  border: 1px solid var(--cms-color-border);
+  border-radius: var(--cms-radius);
+  background: var(--cms-color-background);
+  color: var(--cms-color-text);
+}
+
+.cms-news-card__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.cms-news-card__body {
+  padding: 1rem 1.25rem;
+}
+
+.cms-news-card__body > * + * {
+  margin-block-start: 0.5rem;
+}
+
+.cms-news-card__meta {
+  color: var(--cms-color-text-muted);
+  font-size: 0.95rem;
+}
+
+.cms-news-card__title {
+  font-size: 1.25rem;
+}
+
+.cms-news-card a {
+  color: var(--cms-color-primary);
+}
+
+.cms-partners {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  align-items: center;
+}
+
+.cms-partners--gold {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+
+.cms-partners--silver {
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.cms-partners--bronze,
+.cms-partners--other {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.cms-partner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--cms-color-border);
+  border-radius: var(--cms-radius);
+  background: #ffffff;
+  color: #1b2230;
+  text-align: center;
+}
+
+.cms-partner a {
+  color: inherit;
+}
+
+.cms-partner__name {
+  font-weight: 600;
+}
+
+.cms-partner__logo {
+  display: block;
+  max-width: 100%;
+  max-height: 5rem;
+  width: auto;
+  height: auto;
+}
+
+.cms-gallery {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 48rem) {
+  .cms-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cms-gallery__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--cms-radius);
+}
+
+.cms-post__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--cms-radius);
+}
+
+.cms-post__meta {
+  color: var(--cms-muted);
+}
 `;
 
 /**

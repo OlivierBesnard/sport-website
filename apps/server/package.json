@@ -25,6 +25,7 @@
     "hono": "^4.13.14",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "sharp": "^0.35.5",
     "zod": "catalog:"
   },
   "devDependencies": {

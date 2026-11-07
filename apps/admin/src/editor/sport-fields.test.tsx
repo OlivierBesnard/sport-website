@@ -1,5 +1,5 @@
 import { coreBlocks, createBlockRegistry } from "@sport-cms/blocks";
-import type { SportReader } from "@sport-cms/core";
+import type { ContentReader, SportReader } from "@sport-cms/core";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -27,6 +27,15 @@ const references = {
   ],
   sections: [],
   venues: [],
+  postCategories: [],
+  media: [],
+};
+
+const content: ContentReader = {
+  posts: async () => [],
+  post: async () => null,
+  partners: async () => ({ partners: [], nextChange: null }),
+  media: async () => [],
 };
 
 type CustomField = {
@@ -57,7 +66,7 @@ function renderField(custom: CustomField, value: unknown, withData = true): stri
   const element = custom.render({ id: "champ", value, onChange: () => {}, field: custom });
   return renderToStaticMarkup(
     withData ? (
-      <BlockDataContext value={{ sport, references }}>{element}</BlockDataContext>
+      <BlockDataContext value={{ sport, content, references }}>{element}</BlockDataContext>
     ) : (
       element
     ),
@@ -93,10 +102,21 @@ describe("blocks with a loader in the preview", () => {
       }
     ).components.UpcomingMatches?.render;
     const html = renderToStaticMarkup(
-      <BlockDataContext value={{ sport, references }}>
+      <BlockDataContext value={{ sport, content, references }}>
         {render?.({ id: "m", title: "Prochains matchs", teamId: 0, count: 3 })}
       </BlockDataContext>,
     );
     expect(html).toContain("Chargement des données du bloc « Prochains matchs »…");
+  });
+});
+
+describe("reference fields inside a list", () => {
+  it("are converted too, as in the images of the Gallery", () => {
+    const images = field("Gallery", "images") as unknown as {
+      type: string;
+      arrayFields: Record<string, { type: string }>;
+    };
+    expect(images.type).toBe("array");
+    expect(images.arrayFields.mediaId?.type).toBe("custom");
   });
 });

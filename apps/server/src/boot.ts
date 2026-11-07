@@ -14,6 +14,8 @@ import { adminBuildDirectory, adminRoutes } from "./admin.js";
 import { createApp } from "./app.js";
 import { createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
+import { blockDataApiRoutes } from "./blocks/block-data-api.js";
+import { contentApiRoutes } from "./content/api.js";
 import { hooksRoutes } from "./hooks.js";
 import { HtmlCache } from "./html-cache.js";
 import { openInstance } from "./instance.js";
@@ -23,7 +25,6 @@ import { navigationApiRoutes } from "./navigation-api.js";
 import { officialModuleClients, officialModules } from "./official-modules.js";
 import { pagesApiRoutes } from "./pages-api.js";
 import { sportApiRoutes } from "./sport/api.js";
-import { sportBlocksApiRoutes } from "./sport/block-data-api.js";
 import { webhooksApiRoutes } from "./webhooks-api.js";
 
 /** Directory of `DATA_DIR` holding the installed modules, one directory each. */
@@ -155,7 +156,8 @@ export async function bootInstance(
         navigationApiRoutes({ auth, db, htmlCache, logger })(routes);
         modulesApiRoutes({ auth, modules, htmlCache })(routes);
         sportApiRoutes({ auth, db, logger, onEmitted: wake })(routes);
-        sportBlocksApiRoutes({ auth, db })(routes);
+        blockDataApiRoutes({ auth, db })(routes);
+        contentApiRoutes({ auth, db, dataDir: config.dataDir, logger, onEmitted: wake })(routes);
         webhooksApiRoutes({ auth, db, onReplayed: wake })(routes);
         hooksRoutes({ db, modules, logger, onReceived: wake })(routes);
       },

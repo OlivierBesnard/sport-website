@@ -1,4 +1,4 @@
-import type { SportReader } from "@sport-cms/core";
+import type { ContentReader, SportReader } from "@sport-cms/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { coreBlocks } from "../blocks/index.js";
@@ -15,8 +15,21 @@ const noSport: SportReader = {
   venues: async () => [],
 };
 
+const noContent: ContentReader = {
+  posts: async () => [],
+  post: async () => null,
+  partners: async () => ({ partners: [], nextChange: null }),
+  media: async () => [],
+};
+
 function context(overrides: Partial<BlockLoaderContext> = {}): BlockLoaderContext {
-  return { sport: noSport, now: new Date(0), expiresAt: () => {}, ...overrides };
+  return {
+    sport: noSport,
+    content: noContent,
+    now: new Date(0),
+    expiresAt: () => {},
+    ...overrides,
+  };
 }
 
 const counter = defineBlock<{ label: string }, string>({

@@ -14,7 +14,7 @@ import {
   type ReferenceField,
   resolveProps,
 } from "@sport-cms/blocks";
-import type { SportReader } from "@sport-cms/core";
+import type { ContentReader, SportReader } from "@sport-cms/core";
 import {
   Component,
   createContext,
@@ -24,7 +24,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ReferenceOptions } from "../api/sport";
+import type { ReferenceOptions } from "../api/block-data";
 import { planInsertion, ROOT_ZONE } from "./insertion";
 
 /**
@@ -49,6 +49,7 @@ import { planInsertion, ROOT_ZONE } from "./insertion";
 /** What the blocks bound to the sports content need in the editor; the editor page provides it. */
 export interface BlockData {
   readonly sport: SportReader;
+  readonly content: ContentReader;
   /** Choices of the `reference` fields; `undefined` while they load. */
   readonly references: ReferenceOptions | undefined;
 }
@@ -118,6 +119,18 @@ function toPuckField(field: BlockField): Record<string, unknown> {
         <ReferenceSelect {...props} field={reference} />
       ),
     };
+  }
+  // The fields of the items of a list, or of an object, are converted the same way.
+  if (field.type === "array") {
+    return {
+      ...field,
+      arrayFields: toPuckFields(field.arrayFields),
+      // Puck names the items « Item #0 »: a French, 1-based name instead.
+      getItemSummary: (_item: unknown, index = 0) => `Élément ${index + 1}`,
+    };
+  }
+  if (field.type === "object") {
+    return { ...field, objectFields: toPuckFields(field.objectFields) };
   }
   // The other fields share their shape with Puck's: they pass as they are.
   return field as unknown as Record<string, unknown>;
@@ -366,6 +379,7 @@ function LoadedBlockPreview(props: {
     loader
       .call(definition, loaderProps, {
         sport: blockData.sport,
+        content: blockData.content,
         now: new Date(),
         expiresAt: () => {},
       })

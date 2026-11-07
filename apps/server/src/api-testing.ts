@@ -1,4 +1,6 @@
 import { createSecretKey, type KeyObject, randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type BlockRegistry, coreBlocks } from "@sport-cms/blocks";
 import type { Role } from "@sport-cms/core";
 import {
@@ -14,12 +16,13 @@ import { type Mock, vi } from "vitest";
 import { type AppDependencies, createApp, type Logger } from "./app.js";
 import { type Auth, createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
+import { blockDataApiRoutes } from "./blocks/block-data-api.js";
+import { contentApiRoutes } from "./content/api.js";
 import { HtmlCache } from "./html-cache.js";
 import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { pagesApiRoutes } from "./pages-api.js";
 import { sportApiRoutes } from "./sport/api.js";
-import { sportBlocksApiRoutes } from "./sport/block-data-api.js";
 
 /**
  * Test helpers for the admin API of the pages, the navigation and the modules: the sessions come
@@ -40,6 +43,8 @@ export interface ApiHarness {
   readonly modules: ModuleHost;
   readonly logger: { error: Mock<Logger["error"]> };
   readonly secretKey: KeyObject;
+  /** `DATA_DIR` of the harness (media files); not created until a medium is stored. */
+  readonly dataDir: string;
   /** The full instance application, with the admin API of the pages, navigation and modules. */
   readonly app: (overrides?: Partial<AppDependencies>) => Hono;
   /** Creates an account of the given role via Better Auth, to sign in with `email`. */
@@ -59,6 +64,8 @@ export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
   const db = createTestDatabase();
   const logger = { error: vi.fn<Logger["error"]>() };
   const secretKey = createSecretKey(randomBytes(32));
+  // Created only when a medium is stored; the tests that store one remove it.
+  const dataDir = join(tmpdir(), `sport-cms-api-${randomBytes(6).toString("hex")}`);
   const auth = createAuth({ db, baseUrl: BASE_URL, secretKey, logger });
   const htmlCache = new HtmlCache();
   const modules = new ModuleHost({
@@ -75,7 +82,8 @@ export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
     navigationApiRoutes({ auth, db, htmlCache })(app);
     modulesApiRoutes({ auth, modules, htmlCache })(app);
     sportApiRoutes({ auth, db, logger })(app);
-    sportBlocksApiRoutes({ auth, db })(app);
+    blockDataApiRoutes({ auth, db })(app);
+    contentApiRoutes({ auth, db, dataDir, logger })(app);
   };
 
   const harness: ApiHarness = {
@@ -86,6 +94,7 @@ export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
     modules,
     logger,
     secretKey,
+    dataDir,
     app: (overrides: Partial<AppDependencies> = {}) =>
       createApp({
         db,

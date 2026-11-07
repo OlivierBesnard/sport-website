@@ -19,7 +19,7 @@ describe("entries of @sport-cms/blocks", () => {
   });
 
   it("expose the block contract and the core blocks at the root", () => {
-    expect(root.coreBlocks).toHaveLength(13);
+    expect(root.coreBlocks).toHaveLength(16);
     expect(typeof root.defineBlock).toBe("function");
     expect(typeof root.createBlockRegistry).toBe("function");
     expect(typeof root.safeLinkUrl).toBe("function");

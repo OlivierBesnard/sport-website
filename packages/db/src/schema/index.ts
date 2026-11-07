@@ -1,6 +1,15 @@
 export { auditLog } from "./audit.js";
 export { account, session, user, verification } from "./auth.js";
 export {
+  media,
+  POST_STATUSES,
+  type PostStatus,
+  partners,
+  postCategories,
+  posts,
+  type StoredVariant,
+} from "./content.js";
+export {
   eventDeliveries,
   INBOUND_WEBHOOK_STATUSES,
   type InboundWebhookStatus,

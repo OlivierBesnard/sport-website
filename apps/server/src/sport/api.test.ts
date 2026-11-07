@@ -506,14 +506,14 @@ describe("calendar", () => {
   });
 });
 
-describe("/api/sport-blocks", () => {
+describe("/api/block-data", () => {
   it("gives the editor the choices of the reference fields and the data of the blocks", async () => {
     const past = await season("2025-2026");
     const current = await season("2026-2027");
     await call("POST", `/api/sport/seasons/${current}/current`, ownerCookie);
     await team(past, "U13 A");
     const seniors = await team(current, "Seniors");
-    const references = await call("GET", "/api/sport-blocks/references", editorCookie);
+    const references = await call("GET", "/api/block-data/references", editorCookie);
     expect(references.status).toBe(200);
     expect(references.body.teams).toEqual([
       { value: seniors.id, label: "Seniors" },
@@ -521,16 +521,16 @@ describe("/api/sport-blocks", () => {
     ]);
     const read = await call(
       "GET",
-      `/api/sport-blocks/read?method=teams&query=${encodeURIComponent("{}")}`,
+      `/api/block-data/read?method=teams&query=${encodeURIComponent("{}")}`,
       editorCookie,
     );
     expect((read.body.result as { name: string }[]).map((row) => row.name)).toEqual(["Seniors"]);
     expect(
-      (await call("GET", "/api/sport-blocks/read?method=delete&query={}", editorCookie)).status,
+      (await call("GET", "/api/block-data/read?method=delete&query={}", editorCookie)).status,
     ).toBe(400);
     expect(
-      (await call("GET", "/api/sport-blocks/read?method=matches&query={}", editorCookie)).status,
+      (await call("GET", "/api/block-data/read?method=matches&query={}", editorCookie)).status,
     ).toBe(400);
-    expect((await call("GET", "/api/sport-blocks/references", coachCookie)).status).toBe(403);
+    expect((await call("GET", "/api/block-data/references", coachCookie)).status).toBe(403);
   });
 });
