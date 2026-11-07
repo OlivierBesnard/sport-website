@@ -66,4 +66,4 @@ Le plan complet est dans `docs/PLAN.md` et le découpage en étapes dans `docs/B
 
 ## Processus de développement
 
-Tout se fait sur `main`. Pour chaque étape du backlog : agent `developpeur` (code + tests) → agent `testeur` (vérification indépendante) → agent `relecteur` (revue du diff) → corrections par le développeur → commit + push par l'orchestrateur → étape suivante. Les agents ne commitent pas et ne poussent pas.
+Tout se fait sur `main`, sans sous-agents. Pour chaque étape du backlog, dans la même session : code + tests, vérification réelle des critères d'acceptation (serveur compilé, cas limites), relecture critique du diff, `pnpm check` puis `pnpm build` verts, puis commit + push et étape suivante.
