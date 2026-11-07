@@ -414,6 +414,150 @@ a {
   width: 100%;
   border-radius: var(--cms-radius);
 }
+
+.cms-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cms-plain-text {
+  white-space: pre-line;
+}
+
+.cms-sport-empty {
+  color: var(--cms-muted);
+}
+
+.cms-matches,
+.cms-team-grid,
+.cms-venues {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cms-match,
+.cms-team-card,
+.cms-venue {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--cms-color-border);
+  border-radius: var(--cms-radius);
+  background: var(--cms-color-background);
+  color: var(--cms-color-text);
+}
+
+.cms-match > * + *,
+.cms-team-card > * + * {
+  margin-block-start: 0.25rem;
+}
+
+.cms-match__date,
+.cms-match__details,
+.cms-team-card__meta {
+  color: var(--cms-color-text-muted);
+  font-size: 0.95rem;
+}
+
+.cms-match__teams {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.cms-match__score {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cms-match__versus {
+  color: var(--cms-color-text-muted);
+}
+
+.cms-match__outcome {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: var(--cms-radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.cms-match__outcome--win {
+  color: var(--cms-color-primary);
+}
+
+.cms-match__outcome--draw,
+.cms-match__outcome--loss {
+  color: var(--cms-color-text-muted);
+}
+
+.cms-match a,
+.cms-team-card a,
+.cms-venue a {
+  color: var(--cms-color-primary);
+}
+
+@media (min-width: 48rem) {
+  .cms-team-grid {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+}
+
+.cms-team-card__name {
+  font-size: 1.25rem;
+}
+
+.cms-table-wrap {
+  overflow-x: auto;
+}
+
+.cms-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cms-table th,
+.cms-table td {
+  padding: 0.5rem 0.75rem;
+  border-block-end: 1px solid var(--cms-color-border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.cms-table th {
+  font-weight: 600;
+}
+
+.cms-venue__name {
+  font-size: 1.25rem;
+}
+
+.cms-venue__address {
+  font-style: normal;
+}
+
+.cms-venue__line {
+  display: block;
+}
+
+.cms-map {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  border-radius: var(--cms-radius);
+}
+
+@media (min-width: 48rem) {
+  .cms-map {
+    aspect-ratio: 16 / 9;
+  }
+}
 `;
 
 /**

@@ -18,6 +18,8 @@ import { HtmlCache } from "./html-cache.js";
 import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { pagesApiRoutes } from "./pages-api.js";
+import { sportApiRoutes } from "./sport/api.js";
+import { sportBlocksApiRoutes } from "./sport/block-data-api.js";
 
 /**
  * Test helpers for the admin API of the pages, the navigation and the modules: the sessions come
@@ -72,6 +74,8 @@ export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
     pagesApiRoutes({ auth, db, blocks, htmlCache })(app);
     navigationApiRoutes({ auth, db, htmlCache })(app);
     modulesApiRoutes({ auth, modules, htmlCache })(app);
+    sportApiRoutes({ auth, db, logger })(app);
+    sportBlocksApiRoutes({ auth, db })(app);
   };
 
   const harness: ApiHarness = {

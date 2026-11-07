@@ -10,6 +10,7 @@ export { slotAccepts } from "./slots.js";
 export {
   type ArrayField,
   type BlockDefinition,
+  type BlockLoaderContext,
   type BlockProps,
   type BlockRenderProps,
   type BooleanField,
@@ -25,6 +26,9 @@ export {
   type OptionValue,
   type PageData,
   type RadioField,
+  REFERENCE_SOURCES,
+  type ReferenceField,
+  type ReferenceSource,
   type RichText,
   type RichtextField,
   type SelectField,

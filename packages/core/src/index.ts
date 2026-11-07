@@ -18,4 +18,27 @@ export {
 } from "./events.js";
 export { encodePagePath, normalizePagePath } from "./page-path.js";
 export { slugify } from "./slugify.js";
+export {
+  CALENDAR_EVENT_KIND_LABELS,
+  CALENDAR_EVENT_KINDS,
+  type CalendarEventKind,
+  DAY_PATTERN,
+  isDay,
+  MAX_MATCHES_PER_QUERY,
+  type MatchQuery,
+  type MatchView,
+  type NamedRef,
+  type SportReader,
+  TEAM_GENDER_LABELS,
+  TEAM_GENDERS,
+  type TeamGender,
+  type TeamSummaryView,
+  type TeamView,
+  TIME_OF_DAY_PATTERN,
+  type TrainingSlotView,
+  type VenueView,
+  WEEKDAYS,
+  type Weekday,
+  weekdayLabel,
+} from "./sport.js";
 export { CMS_VERSION } from "./version.js";

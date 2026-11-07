@@ -14,8 +14,10 @@ import {
   restoreVersion,
   saveDraft,
 } from "../api/pages";
+import { apiSportReader, fetchReferences, type ReferenceOptions } from "../api/sport";
 import { Button, FormError } from "../components/ui";
 import {
+  BlockDataContext,
   buildEditorConfig,
   CanvasStylesheetContext,
   EditorRegistryContext,
@@ -64,6 +66,8 @@ export function PageEditorPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<PageVersion[]>();
   const [historyError, setHistoryError] = useState<string>();
+  /** Choices of the `reference` fields of the blocks (teams, sections, venues). */
+  const [references, setReferences] = useState<ReferenceOptions>();
   /** Bumped when the editor must be remounted with other data (a restoration). */
   const [revision, setRevision] = useState(0);
   /** Latest data of the editor, kept outside the render loop. */
@@ -107,6 +111,27 @@ export function PageEditorPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    let current = true;
+    fetchReferences().then(
+      (options) => {
+        if (current) {
+          setReferences(options);
+        }
+      },
+      // Without them, the lists of the blocks stay empty: the rest of the editor works.
+      () => {
+        if (current) {
+          setReferences({ teams: [], sections: [], venues: [] });
+        }
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, []);
+  const blockData = useMemo(() => ({ sport: apiSportReader, references }), [references]);
 
   /**
    * Configuration of Puck: the registry, plus a stand-in for each block type of the saved draft
@@ -327,28 +352,30 @@ export function PageEditorPage() {
       )}
       <div className="min-h-0 flex-1">
         <EditorRegistryContext value={registry}>
-          <CanvasStylesheetContext value={siteStylesheet}>
-            <Puck
-              key={revision}
-              config={config}
-              data={dataRef.current}
-              onChange={(data) => {
-                dataRef.current = data;
-                setDirty(true);
-              }}
-              onPublish={(data) => {
-                dataRef.current = data;
-                void handlePublish();
-              }}
-              viewports={VIEWPORTS}
-              overrides={overrides}
-              headerTitle={page.title}
-              headerPath={page.path}
-              iframe={{ syncHostStyles: false }}
-              dictionary={{ "header-publish": publishing ? "Publication…" : "Publier" }}
-              height="100%"
-            />
-          </CanvasStylesheetContext>
+          <BlockDataContext value={blockData}>
+            <CanvasStylesheetContext value={siteStylesheet}>
+              <Puck
+                key={revision}
+                config={config}
+                data={dataRef.current}
+                onChange={(data) => {
+                  dataRef.current = data;
+                  setDirty(true);
+                }}
+                onPublish={(data) => {
+                  dataRef.current = data;
+                  void handlePublish();
+                }}
+                viewports={VIEWPORTS}
+                overrides={overrides}
+                headerTitle={page.title}
+                headerPath={page.path}
+                iframe={{ syncHostStyles: false }}
+                dictionary={{ "header-publish": publishing ? "Publication…" : "Publier" }}
+                height="100%"
+              />
+            </CanvasStylesheetContext>
+          </BlockDataContext>
         </EditorRegistryContext>
       </div>
     </div>

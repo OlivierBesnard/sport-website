@@ -23,9 +23,11 @@ import { writeMigrations } from "./test-migrations.js";
 const EXPECTED_TABLES = [
   "account",
   "audit_log",
+  "calendar_events",
   "event_deliveries",
   "inbound_webhooks",
   "jobs",
+  "matches",
   "module_credentials",
   "module_kv",
   "modules",
@@ -33,9 +35,15 @@ const EXPECTED_TABLES = [
   "outbox_events",
   "page_versions",
   "pages",
+  "seasons",
+  "sections",
   "session",
   "settings",
+  "team_assignments",
+  "teams",
+  "training_slots",
   "user",
+  "venues",
   "verification",
 ];
 

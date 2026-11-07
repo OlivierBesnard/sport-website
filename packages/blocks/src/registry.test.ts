@@ -12,8 +12,14 @@ describe("createBlockRegistry", () => {
       "Heading",
       "Hero",
       "Image",
+      "LatestResults",
       "RichText",
       "Section",
+      "TeamGrid",
+      "TeamProfile",
+      "TrainingSchedule",
+      "UpcomingMatches",
+      "Venues",
     ]);
     expect(registry.get("Heading")).toBe(headingBlock);
   });

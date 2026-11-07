@@ -14,12 +14,35 @@ const MENU: readonly {
   label: string;
   enabled: boolean;
   end: boolean;
-  permission?: string;
+  /** Shown when the user holds one of them at least. */
+  permissions?: readonly string[];
 }[] = [
   { to: "/", label: "Tableau de bord", enabled: true, end: true },
   { to: "/pages", label: "Pages", enabled: true, end: false },
   { to: "/navigation", label: "Navigation", enabled: true, end: false },
-  { to: "/modules", label: "Modules", enabled: true, end: true, permission: "modules.manage" },
+  {
+    to: "/sport/equipes",
+    label: "Équipes",
+    enabled: true,
+    end: true,
+    permissions: ["sport.manage", "teams.own"],
+  },
+  {
+    to: "/sport/calendrier",
+    label: "Calendrier",
+    enabled: true,
+    end: true,
+    permissions: ["sport.manage", "teams.own"],
+  },
+  {
+    to: "/sport/saisons",
+    label: "Saisons",
+    enabled: true,
+    end: true,
+    permissions: ["sport.manage"],
+  },
+  { to: "/sport/lieux", label: "Lieux", enabled: true, end: true, permissions: ["sport.manage"] },
+  { to: "/modules", label: "Modules", enabled: true, end: true, permissions: ["modules.manage"] },
   { to: "/reglages", label: "Réglages", enabled: false, end: false },
 ];
 
@@ -222,7 +245,9 @@ export function Shell({ clubName, user, onSignedOut }: ShellProps) {
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-3">
             {MENU.filter(
-              (item) => item.permission === undefined || userCan(user, item.permission),
+              (item) =>
+                item.permissions === undefined ||
+                item.permissions.some((permission) => userCan(user, permission)),
             ).map((item) => (
               <MenuItem
                 key={item.to}

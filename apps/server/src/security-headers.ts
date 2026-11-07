@@ -3,13 +3,16 @@ import type { MiddlewareHandler } from "hono";
 /**
  * Content-Security-Policy of the public site. Pages are static HTML: no script at all, styles
  * only from the site's own stylesheet (no inline `style`), images from the site or over HTTPS.
- * The page can neither be framed, nor change its base URL, nor post a form elsewhere.
+ * The page can neither be framed, nor change its base URL, nor post a form elsewhere. The only
+ * frame it may show is the OpenStreetMap map of the block « Lieux et carte » (sandboxed by the
+ * block, without the origin of OpenStreetMap: no cookie).
  */
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "style-src 'self'",
   "img-src 'self' https:",
   "font-src 'self'",
+  "frame-src https://www.openstreetmap.org",
   "base-uri 'none'",
   "form-action 'self'",
   "frame-ancestors 'none'",

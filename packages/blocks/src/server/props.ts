@@ -35,6 +35,11 @@ function isNumberWithin(value: unknown, field: { min?: number; max?: number }): 
   );
 }
 
+/** A row id of a reference field, or `0` for none. */
+function isReferenceId(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 function optionOr(options: readonly FieldOption[], value: unknown, fallback: unknown): unknown {
   const isOption = (candidate: unknown) => options.some((option) => option.value === candidate);
   if (isOption(value)) {
@@ -75,6 +80,11 @@ function resolveField(
           resolveProps(field.arrayFields, item, field.defaultItemProps ?? {}, resolvers),
         );
     }
+    case "reference":
+      if (isReferenceId(value)) {
+        return value;
+      }
+      return isReferenceId(fallback) ? fallback : 0;
     case "object":
       return resolveProps(
         field.objectFields,

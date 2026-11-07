@@ -22,6 +22,8 @@ import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { officialModuleClients, officialModules } from "./official-modules.js";
 import { pagesApiRoutes } from "./pages-api.js";
+import { sportApiRoutes } from "./sport/api.js";
+import { sportBlocksApiRoutes } from "./sport/block-data-api.js";
 import { webhooksApiRoutes } from "./webhooks-api.js";
 
 /** Directory of `DATA_DIR` holding the installed modules, one directory each. */
@@ -152,6 +154,8 @@ export async function bootInstance(
         pagesApiRoutes({ auth, db, blocks, htmlCache, logger })(routes);
         navigationApiRoutes({ auth, db, htmlCache, logger })(routes);
         modulesApiRoutes({ auth, modules, htmlCache })(routes);
+        sportApiRoutes({ auth, db, logger, onEmitted: wake })(routes);
+        sportBlocksApiRoutes({ auth, db })(routes);
         webhooksApiRoutes({ auth, db, onReplayed: wake })(routes);
         hooksRoutes({ db, modules, logger, onReceived: wake })(routes);
       },

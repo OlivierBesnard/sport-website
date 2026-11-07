@@ -83,16 +83,19 @@ describe("field types tied to prop types", () => {
       defaultProps: { content: [], title: "", body: "", align: "left" },
       render,
     });
-    defineBlock<{ count: number; items: { label: string }[] }>({
+    defineBlock<{ count: number; teamId: number; name: string; items: { label: string }[] }>({
       type: "Mismatched2",
       label: "Incohérent",
       fields: {
         // @ts-expect-error a number prop cannot be a slot
         count: { type: "slot" },
+        teamId: { type: "reference", source: "teams" },
+        // @ts-expect-error a reference stores a row id: a number prop
+        name: { type: "reference", source: "teams" },
         // @ts-expect-error the fields of the items must match the item type
         items: { type: "array", arrayFields: { label: { type: "number" } } },
       },
-      defaultProps: { count: 0, items: [] },
+      defaultProps: { count: 0, teamId: 0, name: "", items: [] },
       render,
     });
     expect(true).toBe(true);

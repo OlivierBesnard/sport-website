@@ -25,6 +25,7 @@ const BLOCK_FIELD_TYPES = [
   "slot",
   "array",
   "object",
+  "reference",
 ] as const;
 
 function text(max: number, label: string) {
@@ -201,6 +202,7 @@ export const blockSchema = z.looseObject({
     )
     .max(20, "Un bloc déclare au plus 20 dépendances.")
     .optional(),
+  loader: fn("Le chargement des données du bloc (loader) doit être une fonction.").optional(),
   render: fn("Le rendu du bloc (render) doit être une fonction."),
 });
 

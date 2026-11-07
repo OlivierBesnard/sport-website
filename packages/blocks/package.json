@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sport-cms/core": "workspace:*",
     "react": "catalog:",
     "sanitize-html": "^2.18.1"
   },

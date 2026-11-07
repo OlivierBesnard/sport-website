@@ -14,6 +14,10 @@ import { PageEditorPage } from "./routes/PageEditorPage";
 import { PagesPage } from "./routes/PagesPage";
 import { SetupPage } from "./routes/SetupPage";
 import { SignInPage } from "./routes/SignInPage";
+import { CalendarPage } from "./routes/sport/CalendarPage";
+import { SeasonsPage } from "./routes/sport/SeasonsPage";
+import { TeamsPage } from "./routes/sport/TeamsPage";
+import { VenuesPage } from "./routes/sport/VenuesPage";
 
 /**
  * State of the back-office, decided once at load and after every auth change: a fresh
@@ -100,6 +104,10 @@ export function App() {
           <Route index element={<DashboardPage clubName={boot.clubName} user={boot.user} />} />
           <Route path="pages" element={<PagesPage />} />
           <Route path="navigation" element={<NavigationPage />} />
+          <Route path="sport/equipes" element={<TeamsPage user={boot.user} />} />
+          <Route path="sport/calendrier" element={<CalendarPage user={boot.user} />} />
+          <Route path="sport/saisons" element={<SeasonsPage />} />
+          <Route path="sport/lieux" element={<VenuesPage />} />
           <Route path="modules" element={<ModulesPage />} />
           <Route path="modules/:id/*" element={<ModuleAdminPage user={boot.user} />} />
           <Route

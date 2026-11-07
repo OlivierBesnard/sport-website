@@ -5,8 +5,8 @@ import {
   createBlockRegistry,
   safeImageUrl,
 } from "@sport-cms/blocks";
-import { renderPageContent } from "@sport-cms/blocks/server";
-import { encodePagePath, normalizePagePath } from "@sport-cms/core";
+import { loadPageBlocks, renderPageContent } from "@sport-cms/blocks/server";
+import { encodePagePath, normalizePagePath, type SportReader } from "@sport-cms/core";
 import type { Database } from "@sport-cms/db";
 import { buildThemeCss, defaultTheme, type ThemeTokens } from "@sport-cms/themes";
 import { type Context, Hono } from "hono";
@@ -22,6 +22,7 @@ import {
 } from "./render/document.js";
 import { sameOriginWrites } from "./same-origin.js";
 import { securityHeaders } from "./security-headers.js";
+import { createSportReader } from "./sport/reader.js";
 
 /** Largest body accepted by the API (`/api/*`): 413 beyond. */
 export const MAX_API_BODY_BYTES = 4 * 1024 * 1024;
@@ -51,6 +52,10 @@ export interface AppDependencies {
   /** Theme of the site, read on every request, with the same rule as `blocks`. */
   readonly theme?: () => ThemeTokens;
   readonly logger?: Logger;
+  /** Sports content read by the blocks bound to it (the database of `db` by default). */
+  readonly sport?: SportReader;
+  /** Clock of the rendering ("upcoming" matches are relative to it). */
+  readonly now?: () => Date;
   /**
    * Registers the other routes of the instance (API, back-office, webhooks…), matched before the
    * public site, whose pages answer any other path. They get the security headers (unless they
@@ -130,6 +135,8 @@ function sendPage(context: Context, html: string): Response {
  */
 export function createApp(dependencies: AppDependencies): Hono {
   const { db, baseUrl, htmlCache = new HtmlCache(), logger = console, routes } = dependencies;
+  const now = dependencies.now ?? (() => new Date());
+  const sport = dependencies.sport ?? createSportReader(db, now);
   const coreRegistry = createBlockRegistry(coreBlocks);
   const blocks = dependencies.blocks ?? (() => coreRegistry);
   const theme = dependencies.theme ?? (() => defaultTheme);
@@ -185,15 +192,44 @@ export function createApp(dependencies: AppDependencies): Hono {
     return true;
   }
 
-  function renderPage(
+  async function renderPage(
     path: string,
     page: PublishedPage,
     registry: BlockRegistry,
     ticket: CacheTicket,
-  ): { html: string; complete: boolean; dependencies: Set<string> } {
+  ): Promise<{
+    html: string;
+    complete: boolean;
+    dependencies: Set<string>;
+    expiresAt: number | undefined;
+  }> {
     let complete = true;
     // Events after which this page is out of date: the `dependsOn` of the blocks it renders.
     const dependencies = new Set<string>();
+    // Date after which it is out of date anyway (the next match has started…).
+    let expiresAt: number | undefined;
+    const onBlockError = (error: unknown, block: { type: string; id: string }): void => {
+      complete = false;
+      if (firstReport(ticket, block.type, block.id)) {
+        logger.error(`Bloc « ${block.type} » (${block.id}) non affiché sur la page ${path}`, error);
+      }
+    };
+    // The data of the blocks bound to the instance (matches, teams…), all loaded before the
+    // synchronous rendering.
+    const loaded = await loadPageBlocks(page.data, {
+      registry,
+      onBlockError,
+      context: {
+        sport,
+        now: now(),
+        expiresAt: (date) => {
+          const time = date.getTime();
+          if (Number.isFinite(time) && (expiresAt === undefined || time < expiresAt)) {
+            expiresAt = time;
+          }
+        },
+      },
+    });
     const image = safeImageUrl(page.image);
     const head: PageHead = {
       title: page.title,
@@ -203,20 +239,13 @@ export function createApp(dependencies: AppDependencies): Hono {
     };
     const content = renderPageContent(page.data, {
       registry,
+      loaded,
       onBlockRendered: (definition) => {
         for (const dependency of definition.dependsOn ?? []) {
           dependencies.add(dependency);
         }
       },
-      onBlockError: (error, block) => {
-        complete = false;
-        if (firstReport(ticket, block.type, block.id)) {
-          logger.error(
-            `Bloc « ${block.type} » (${block.id}) non affiché sur la page ${path}`,
-            error,
-          );
-        }
-      },
+      onBlockError,
     });
     // Rendering is synchronous: `complete` is final once the document is built.
     const html = renderDocument(
@@ -225,7 +254,7 @@ export function createApp(dependencies: AppDependencies): Hono {
       content,
       readNavigation(db, DEFAULT_MENU),
     );
-    return { html, complete, dependencies };
+    return { html, complete, dependencies, expiresAt };
   }
 
   const app = new Hono();
@@ -271,7 +300,7 @@ export function createApp(dependencies: AppDependencies): Hono {
     });
   });
 
-  app.get("*", (context) => {
+  app.get("*", async (context) => {
     const url = new URL(context.req.url);
     let requested: string;
     try {
@@ -298,9 +327,14 @@ export function createApp(dependencies: AppDependencies): Hono {
     if (page === undefined) {
       return context.notFound();
     }
-    const { html, complete, dependencies } = renderPage(path, page, registry, ticket);
+    const { html, complete, dependencies, expiresAt } = await renderPage(
+      path,
+      page,
+      registry,
+      ticket,
+    );
     if (complete) {
-      htmlCache.set(path, html, ticket, dependencies);
+      htmlCache.set(path, html, ticket, dependencies, expiresAt);
     }
     return sendPage(context, html);
   });

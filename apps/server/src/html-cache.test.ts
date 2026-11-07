@@ -120,4 +120,24 @@ describe("HtmlCache", () => {
       expect(cache.set("/x", "x", cache.ticket("/x"), ["match.updated"])).toBe(true);
     });
   });
+
+  describe("expiry", () => {
+    it("forgets a page once its date has passed, and the renders started before it", () => {
+      let clock = 1000;
+      const cache = new HtmlCache({ now: () => clock });
+      cache.set("/", "avant le match", cache.ticket("/"), [], 2000);
+      cache.set("/club", "club", cache.ticket("/club"));
+      clock = 1999;
+      expect(cache.get("/")).toBe("avant le match");
+      const ticket = cache.ticket("/");
+      clock = 2000;
+      expect(cache.get("/")).toBeUndefined();
+      expect(cache.set("/", "rendu commencé avant", ticket)).toBe(false);
+      expect(cache.get("/club")).toBe("club");
+      // Stored again without a date: it stays.
+      cache.set("/", "après", cache.ticket("/"));
+      clock = 10_000;
+      expect(cache.get("/")).toBe("après");
+    });
+  });
 });

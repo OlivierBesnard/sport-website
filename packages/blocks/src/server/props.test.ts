@@ -38,6 +38,19 @@ const FIELDS: Readonly<Record<string, Field>> = {
   link: { type: "object", objectFields: { href: { type: "text" }, label: { type: "text" } } },
 };
 
+describe("resolveProps of a reference field", () => {
+  const fields: Readonly<Record<string, Field>> = { team: { type: "reference", source: "teams" } };
+
+  it("keeps a row id or 0, else falls back to the default, else 0", () => {
+    expect(resolveProps(fields, { team: 7 }, { team: 3 }, resolvers)).toEqual({ team: 7 });
+    expect(resolveProps(fields, { team: 0 }, { team: 3 }, resolvers)).toEqual({ team: 0 });
+    for (const wrong of [-1, 1.5, "7", null, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(resolveProps(fields, { team: wrong }, { team: 3 }, resolvers)).toEqual({ team: 3 });
+      expect(resolveProps(fields, { team: wrong }, {}, resolvers)).toEqual({ team: 0 });
+    }
+  });
+});
+
 const DEFAULTS = {
   title: "Titre",
   body: "",

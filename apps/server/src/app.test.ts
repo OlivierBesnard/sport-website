@@ -597,7 +597,8 @@ describe("security headers", () => {
   it("forbids scripts, inline styles, framing and foreign form targets", () => {
     expect(CONTENT_SECURITY_POLICY).toBe(
       "default-src 'none'; style-src 'self'; img-src 'self' https:; font-src 'self'; " +
-        "base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        "frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'; " +
+        "frame-ancestors 'none'",
     );
     expect(CONTENT_SECURITY_POLICY).not.toContain("unsafe");
     expect(CONTENT_SECURITY_POLICY).not.toContain("script-src");

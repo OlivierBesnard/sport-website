@@ -28,7 +28,8 @@ export const ADMIN_PREFIX = "/admin";
  * (`connect-src 'self'`), and styles may be inline (React sets `style` attributes; Tailwind
  * ships the stylesheet as a file). The editor of the pages previews its work in an
  * `about:srcdoc` iframe (`frame-src 'self' about:`), whose images are the ones of the site or
- * any `https:` address the club may embed. The back-office cannot be framed, post a form
+ * any `https:` address the club may embed, and whose only foreign frame is the OpenStreetMap map
+ * of the block « Lieux et carte », as on the site. The back-office cannot be framed, post a form
  * elsewhere or change its base URI.
  */
 export const ADMIN_CONTENT_SECURITY_POLICY = [
@@ -38,7 +39,7 @@ export const ADMIN_CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: https:",
   "font-src 'self'",
   "connect-src 'self'",
-  "frame-src 'self' about:",
+  "frame-src 'self' about: https://www.openstreetmap.org",
   "base-uri 'none'",
   "form-action 'self'",
   "frame-ancestors 'none'",

@@ -19,19 +19,22 @@ export const CORE_PERMISSIONS = [
   "users.manage",
   "modules.manage",
   "finance.manage",
+  "sport.manage",
   "teams.own",
 ] as const satisfies readonly Permission[];
 
 /**
  * Permissions held by each role, other than the owner's, who can do anything (PLAN §2.2):
- * the owner manages the technical settings, the modules, the backups and the users. The team
- * permissions will be refined with the sports content (PLAN §3.3): `teams.own` then means
- * "only the teams assigned to the account".
+ * the owner manages the technical settings, the modules, the backups and the users.
+ *
+ * Sports content (PLAN §3.3): `sport.manage` edits all of it (seasons, sections, venues, teams,
+ * calendar); `teams.own` only the teams assigned to the account (`team_assignments`) — their
+ * description, training times and calendar, results included.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Exclude<Role, "owner">, readonly Permission[]>> = {
   // Everything except the technical settings (`settings.manage`, `modules.manage`).
-  admin: ["pages.edit", "users.manage", "finance.manage", "teams.own"],
-  editor: ["pages.edit", "teams.own"],
+  admin: ["pages.edit", "users.manage", "finance.manage", "sport.manage", "teams.own"],
+  editor: ["pages.edit", "sport.manage", "teams.own"],
   treasurer: ["finance.manage"],
   coach: ["teams.own"],
   member: [],

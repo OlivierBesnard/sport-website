@@ -7,6 +7,7 @@ import type {
   SlotComponent,
   SlotProps,
 } from "../types.js";
+import type { LoadedBlocks } from "./load.js";
 import { isRecord, resolveProps } from "./props.js";
 import { sanitizeRichText } from "./sanitize.js";
 
@@ -51,6 +52,20 @@ export interface RenderOptions {
    * collects their `dependsOn` to know which events make the page out of date.
    */
   readonly onBlockRendered?: (definition: BlockDefinition) => void;
+  /**
+   * Data of the blocks with a `loader`, from {@link loadPageBlocks} on the same page data. A block
+   * with a loader but no data (its loader failed, already reported) is left out; without
+   * `loaded` at all, every such block is left out and reported.
+   */
+  readonly loaded?: LoadedBlocks;
+}
+
+/** Reported for a block with a `loader` rendered without {@link RenderOptions.loaded}. */
+export class BlockDataMissingError extends Error {
+  constructor(block: BlockErrorContext) {
+    super(`Les données du bloc « ${block.type} » (${block.id}) n'ont pas été chargées.`);
+    this.name = "BlockDataMissingError";
+  }
 }
 
 interface BlockEntry {
@@ -58,6 +73,7 @@ interface BlockEntry {
   readonly key: string;
   readonly type: string;
   readonly id: string;
+  /** As stored: the key of the block in {@link RenderOptions.loaded}. */
   readonly props: Readonly<Record<string, unknown>>;
 }
 
@@ -161,12 +177,27 @@ function BlockItem({ entry, depth, options }: BlockItemProps): ReactNode {
     return null;
   }
   options.onBlockRendered?.(definition);
+  let data: unknown;
+  if (definition.loader !== undefined) {
+    const loaded = options.loaded?.get(entry.props);
+    if (loaded === undefined) {
+      if (options.loaded === undefined) {
+        const block = { type: entry.type, id: entry.id };
+        options.onBlockError?.(new BlockDataMissingError(block), block);
+      }
+      return null;
+    }
+    data = loaded.data;
+  }
   try {
     const props = resolveProps(definition.fields, entry.props, definition.defaultProps, {
       slot: (items) => slotComponent(items, depth + 1, options),
       richtext: richTextNode,
     });
-    return definition.render({ ...props, id: entry.id } as BlockRenderProps<BlockProps>);
+    return definition.render({ ...props, id: entry.id, data } as BlockRenderProps<
+      BlockProps,
+      unknown
+    >);
   } catch (error) {
     options.onBlockError?.(error, { type: entry.type, id: entry.id });
     return null;

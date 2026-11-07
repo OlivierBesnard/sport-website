@@ -1,3 +1,4 @@
+import type { SportReader } from "@sport-cms/core";
 import type { ElementType, ReactNode } from "react";
 
 /*
@@ -60,6 +61,22 @@ export interface RadioField<Value extends OptionValue = OptionValue> extends Bas
   readonly options: readonly FieldOption<Value>[];
 }
 
+/** Kinds of rows a {@link ReferenceField} can point at. */
+export const REFERENCE_SOURCES = ["teams", "sections", "venues"] as const;
+export type ReferenceSource = (typeof REFERENCE_SOURCES)[number];
+
+/**
+ * The id of a row of the sports content (a team, a section, a venue), chosen in a list the editor
+ * fills from the instance; stored as a number, `0` for none. A block shows nothing, or all rows,
+ * for `0`, and must expect an id whose row was deleted since.
+ */
+export interface ReferenceField extends BaseField {
+  readonly type: "reference";
+  readonly source: ReferenceSource;
+  /** Label of the `0` choice (« Toutes les équipes »); without it, a row must be chosen. */
+  readonly emptyLabel?: string;
+}
+
 /** Nested blocks, stored as a list of {@link ComponentData}. */
 export interface SlotField extends BaseField {
   readonly type: "slot";
@@ -94,7 +111,8 @@ export type Field =
   | RadioField
   | SlotField
   | ArrayField
-  | ObjectField;
+  | ObjectField
+  | ReferenceField;
 
 /** One block of a page as stored: Puck's `ComponentData`. */
 export interface ComponentData {
@@ -144,8 +162,26 @@ export type WithSlots<T> = T extends Slot
       ? { [Key in keyof T]: WithSlots<T[Key]> }
       : T;
 
-/** Props received by `render`: the field values with slots ready to render, plus the block id. */
-export type BlockRenderProps<Props extends BlockProps> = WithSlots<Props> & { readonly id: string };
+/**
+ * Props received by `render`: the field values with slots ready to render, plus the block id and,
+ * for a block with a `loader`, the data it loaded.
+ */
+export type BlockRenderProps<Props extends BlockProps, Data = undefined> = WithSlots<Props> & {
+  readonly id: string;
+} & (undefined extends Data ? { readonly data?: Data } : { readonly data: Data });
+
+/** What a block `loader` receives besides the props of the block. */
+export interface BlockLoaderContext {
+  /** Sports content of the instance (public data only). */
+  readonly sport: SportReader;
+  /** Time of the rendering: what is "upcoming" is relative to it. */
+  readonly now: Date;
+  /**
+   * The loaded data stays right until `date` at most (the first upcoming match starts…): the
+   * server renders the page again after it, even if no event made it out of date.
+   */
+  expiresAt(date: Date): void;
+}
 
 /** A `select` or `radio` field whose options store values of type `Value`. */
 export type ChoiceField<Value extends OptionValue> = SelectField<Value> | RadioField<Value>;
@@ -156,7 +192,8 @@ export type ChoiceField<Value extends OptionValue> = SelectField<Value> | RadioF
  * - `Slot` → `slot`;
  * - `string` → `text`, `textarea`, `select` or `radio`; a union of string literals (`"left" |
  *   "center"`) → `select` or `radio` with options of those values only;
- * - `number` → `number`, `select` or `radio`; a union of number literals → `select` or `radio`;
+ * - `number` → `number`, `select`, `radio` or `reference`; a union of number literals →
+ *   `select` or `radio`;
  * - `boolean` → `boolean`, `select` or `radio`;
  * - `RichText` → `richtext` (the stored HTML reaches `render` as a node, not a string);
  * - a list of objects → `array` whose `arrayFields` match the item type;
@@ -178,7 +215,7 @@ type DefinedFieldFor<Value> = [Value] extends [Slot]
       : ChoiceField<Value>
     : [Value] extends [number]
       ? number extends Value
-        ? NumberField | ChoiceField<Value>
+        ? NumberField | ChoiceField<Value> | ReferenceField
         : ChoiceField<Value>
       : [Value] extends [boolean]
         ? BooleanField | ChoiceField<Value>
@@ -199,7 +236,7 @@ export type Fields<Props extends BlockProps> = {
 };
 
 /** Definition of a block type, shared by the editor and the public renderer. */
-export interface BlockDefinition<Props extends BlockProps = BlockProps> {
+export interface BlockDefinition<Props extends BlockProps = BlockProps, Data = unknown> {
   /**
    * Unique type stored in page data: PascalCase for core blocks (`Heading`), prefixed with the
    * module identifier for module blocks (`helloasso.membership-button`). Never renamed: pages
@@ -222,13 +259,24 @@ export interface BlockDefinition<Props extends BlockProps = BlockProps> {
    * is emitted. For blocks showing data that changes without the page being published again.
    */
   readonly dependsOn?: readonly string[];
-  /** Renders the block; must stay a pure function of its props (rendered on the server). */
-  render(props: BlockRenderProps<Props>): ReactNode;
+  /**
+   * Loads what the block shows from the instance (upcoming matches…), before it renders: on the
+   * server for the public site, through the API in the editor. It receives the props as stored
+   * once checked against the fields (slots as lists of blocks, rich text as HTML), and what it
+   * returns reaches `render` as `data`. When it fails, or takes longer than a few seconds, the
+   * block is left out of the page (like a block whose `render` throws).
+   */
+  loader?(props: Props, context: BlockLoaderContext): Promise<Data>;
+  /**
+   * Renders the block; must stay a pure function of its props and of the data of its `loader`
+   * (rendered synchronously on the server).
+   */
+  render(props: BlockRenderProps<Props, Data>): ReactNode;
 }
 
-/** Declares a block, keeping its props type. */
-export function defineBlock<Props extends BlockProps>(
-  definition: BlockDefinition<Props>,
-): BlockDefinition<Props> {
+/** Declares a block, keeping its props type (and the type of the data of its `loader`). */
+export function defineBlock<Props extends BlockProps, Data = undefined>(
+  definition: BlockDefinition<Props, Data>,
+): BlockDefinition<Props, Data> {
   return definition;
 }

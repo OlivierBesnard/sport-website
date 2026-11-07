@@ -1,13 +1,30 @@
-import { type Config, type Overrides, type Data as PuckData, useGetPuck } from "@puckeditor/core";
+import {
+  type Config,
+  FieldLabel,
+  type Overrides,
+  type Data as PuckData,
+  useGetPuck,
+} from "@puckeditor/core";
 import {
   type BlockDefinition,
   type Field as BlockField,
   type BlockRegistry,
   type BooleanField,
   type PageData,
+  type ReferenceField,
   resolveProps,
 } from "@sport-cms/blocks";
-import { Component, createContext, type ReactNode, useContext, useEffect } from "react";
+import type { SportReader } from "@sport-cms/core";
+import {
+  Component,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { ReferenceOptions } from "../api/sport";
 import { planInsertion, ROOT_ZONE } from "./insertion";
 
 /**
@@ -24,7 +41,55 @@ import { planInsertion, ROOT_ZONE } from "./insertion";
  * - Each block renders from props normalized like the public renderer does (`resolveProps`:
  *   defaults for missing or invalid values), inside an error boundary: one broken block shows a
  *   message in the preview instead of blanking the whole editor.
+ * - A `reference` field (a team, a section, a venue) is a list of the rows of the instance
+ *   ({@link BlockDataContext}); a block with a `loader` previews the real data, loaded through
+ *   the API as the public site loads it from the database.
  */
+
+/** What the blocks bound to the sports content need in the editor; the editor page provides it. */
+export interface BlockData {
+  readonly sport: SportReader;
+  /** Choices of the `reference` fields; `undefined` while they load. */
+  readonly references: ReferenceOptions | undefined;
+}
+
+export const BlockDataContext = createContext<BlockData | undefined>(undefined);
+
+/** The list of a `reference` field: the rows of the instance, `0` for the empty choice. */
+export function ReferenceSelect(props: {
+  field: ReferenceField;
+  id: string;
+  value: unknown;
+  onChange: (value: number) => void;
+  readOnly?: boolean;
+}): ReactNode {
+  const { field } = props;
+  const options = useContext(BlockDataContext)?.references?.[field.source];
+  const value = typeof props.value === "number" ? props.value : 0;
+  const known = options?.some((option) => option.value === value) ?? false;
+  return (
+    <FieldLabel label={field.label ?? ""} el="label" readOnly={props.readOnly}>
+      <select
+        id={props.id}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+        value={value}
+        disabled={props.readOnly === true || options === undefined}
+        onChange={(event) => props.onChange(Number(event.target.value))}
+      >
+        {options === undefined && <option value={value}>Chargement…</option>}
+        {options !== undefined && <option value={0}>{field.emptyLabel ?? "Choisir…"}</option>}
+        {options !== undefined && value !== 0 && !known && (
+          <option value={value}>Élément supprimé</option>
+        )}
+        {options?.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </FieldLabel>
+  );
+}
 
 /** The two choices of a boolean field, as Puck renders them. */
 const BOOLEAN_CHOICES = [
@@ -37,6 +102,22 @@ function toPuckField(field: BlockField): Record<string, unknown> {
   if (field.type === "boolean") {
     const boolean: BooleanField = field;
     return { type: "radio", label: boolean.label, options: BOOLEAN_CHOICES };
+  }
+  if (field.type === "reference") {
+    const reference: ReferenceField = field;
+    return {
+      type: "custom",
+      label: reference.label,
+      render: (props: {
+        id: string;
+        value: unknown;
+        onChange: (value: number) => void;
+        readOnly?: boolean;
+      }) => (
+        // Puck passes its own `field` (the custom field): the reference field comes last.
+        <ReferenceSelect {...props} field={reference} />
+      ),
+    };
   }
   // The other fields share their shape with Puck's: they pass as they are.
   return field as unknown as Record<string, unknown>;
@@ -238,7 +319,90 @@ function BlockPreview(props: {
   definition: BlockDefinition;
   puckProps: Record<string, unknown>;
 }): ReactNode {
+  if (props.definition.loader !== undefined) {
+    return <LoadedBlockPreview {...props} />;
+  }
   return props.definition.render(editorProps(props.definition, props.puckProps) as never);
+}
+
+type Loaded = { state: "loading" } | { state: "ready"; data: unknown } | { state: "failed" };
+
+/** Props of a block that decide what its loader returns (slots and rich text left out). */
+function loaderKey(definition: BlockDefinition, props: Record<string, unknown>): string {
+  const plain: Record<string, unknown> = {};
+  for (const [name, field] of Object.entries(definition.fields)) {
+    if (field.type !== "slot" && field.type !== "richtext") {
+      plain[name] = props[name];
+    }
+  }
+  return JSON.stringify(plain);
+}
+
+/**
+ * A block with a `loader`: loaded through the API (the data the public site shows), loaded again
+ * when one of its fields changes, rendered once the data is there.
+ */
+function LoadedBlockPreview(props: {
+  definition: BlockDefinition;
+  puckProps: Record<string, unknown>;
+}): ReactNode {
+  const { definition } = props;
+  const blockData = useContext(BlockDataContext);
+  const resolved = editorProps(definition, props.puckProps);
+  const key = loaderKey(definition, resolved);
+  const [loaded, setLoaded] = useState<{ key: string; value: Loaded }>({
+    key: "",
+    value: { state: "loading" },
+  });
+  // The props as of `key`: the effect runs again when the key changes, not on every render.
+  const loaderProps = useMemo(() => JSON.parse(key) as Record<string, unknown>, [key]);
+  useEffect(() => {
+    const { loader } = definition;
+    if (blockData === undefined || loader === undefined) {
+      setLoaded({ key, value: { state: "failed" } });
+      return undefined;
+    }
+    let current = true;
+    loader
+      .call(definition, loaderProps, {
+        sport: blockData.sport,
+        now: new Date(),
+        expiresAt: () => {},
+      })
+      .then(
+        (data) => {
+          if (current) {
+            setLoaded({ key, value: { state: "ready", data } });
+          }
+        },
+        () => {
+          if (current) {
+            setLoaded({ key, value: { state: "failed" } });
+          }
+        },
+      );
+    return () => {
+      current = false;
+    };
+  }, [definition, blockData, key, loaderProps]);
+
+  const value: Loaded = loaded.key === key ? loaded.value : { state: "loading" };
+  if (value.state === "loading") {
+    return (
+      <p role="status" className="cms-container">
+        Chargement des données du bloc « {definition.label} »…
+      </p>
+    );
+  }
+  if (value.state === "failed") {
+    return (
+      <p role="alert" className="cms-container">
+        Les données du bloc « {definition.label} » n'ont pas pu être chargées : l'aperçu n'est pas
+        disponible.
+      </p>
+    );
+  }
+  return definition.render({ ...resolved, data: value.data } as never);
 }
 
 /**

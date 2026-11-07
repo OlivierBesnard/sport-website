@@ -27,10 +27,15 @@ export interface CacheTicket {
  *
  * A page can also depend on events (`dependsOn` of its blocks: `match.result_published`…): `set`
  * records them, and `invalidateDependency(type)` forgets every page that depends on it — and
- * any render of such a page in progress, by the same tickets.
+ * any render of such a page in progress, by the same tickets. And it can depend on time (the
+ * next match is no longer upcoming once it has started): `set` takes the date until which the
+ * HTML is right, after which `get` no longer returns it.
  */
 export class HtmlCache {
   readonly #pages = new Map<string, string>();
+  /** Date (epoch milliseconds) after which a page must be rendered again, when it has one. */
+  readonly #expiries = new Map<string, number>();
+  readonly #now: () => number;
   /** Invalidations of each path in the current epoch (paths never invalidated are absent). */
   readonly #generations = new Map<string, number>();
   /** Pages cached with each dependency, and the dependencies of each cached page. */
@@ -41,8 +46,19 @@ export class HtmlCache {
   readonly #invalidatedAt = new Map<string, number>();
   #epoch = 0;
 
+  constructor(options: { readonly now?: () => number } = {}) {
+    this.#now = options.now ?? Date.now;
+  }
+
   get(path: string): string | undefined {
-    return this.#pages.get(normalizePagePath(path));
+    const canonical = normalizePagePath(path);
+    const expiry = this.#expiries.get(canonical);
+    if (expiry !== undefined && this.#now() >= expiry) {
+      // Out of date: forgotten like an invalidation, so a render in progress is not stored.
+      this.invalidate(canonical);
+      return undefined;
+    }
+    return this.#pages.get(canonical);
   }
 
   /** To take before rendering the page at `path`, then to pass to {@link set}. */
@@ -65,6 +81,7 @@ export class HtmlCache {
     html: string,
     ticket?: CacheTicket,
     dependencies: Iterable<string> = [],
+    expiresAt?: number,
   ): boolean {
     const canonical = normalizePagePath(path);
     const depends = new Set(dependencies);
@@ -81,6 +98,11 @@ export class HtmlCache {
     }
     this.#forgetDependencies(canonical);
     this.#pages.set(canonical, html);
+    if (expiresAt === undefined) {
+      this.#expiries.delete(canonical);
+    } else {
+      this.#expiries.set(canonical, expiresAt);
+    }
     if (depends.size > 0) {
       this.#dependencies.set(canonical, depends);
       for (const dependency of depends) {
@@ -111,6 +133,7 @@ export class HtmlCache {
     const canonical = normalizePagePath(path);
     this.#generations.set(canonical, (this.#generations.get(canonical) ?? 0) + 1);
     this.#forgetDependencies(canonical);
+    this.#expiries.delete(canonical);
     return this.#pages.delete(canonical);
   }
 
@@ -131,6 +154,7 @@ export class HtmlCache {
   /** Forgets every page; the renders in progress will not be stored. */
   clear(): void {
     this.#pages.clear();
+    this.#expiries.clear();
     // A new epoch outdates every ticket, so the generations can start over (bounded memory).
     this.#generations.clear();
     this.#dependents.clear();
