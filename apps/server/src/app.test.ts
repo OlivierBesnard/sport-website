@@ -10,6 +10,7 @@ import {
 import { defaultTheme } from "@sport-cms/themes";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { type AppDependencies, createApp, type Logger } from "./app.js";
 import { HtmlCache } from "./html-cache.js";
@@ -18,6 +19,11 @@ import {
   SECURITY_HEADERS,
   STRICT_TRANSPORT_SECURITY,
 } from "./security-headers.js";
+
+/** A component that always fails while React renders it. */
+function Exploding(): never {
+  throw new Error("composant enfant");
+}
 
 const BASE_URL = "https://monclub.example";
 
@@ -376,8 +382,76 @@ describe("published pages", () => {
       new Error("boom"),
     );
     expect(htmlCache.size).toBe(0);
+    // Rendered again (not cached), but logged once until the page is invalidated.
+    expect(await (await server.request("/club")).text()).toContain("Visible");
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    htmlCache.invalidate("/club");
     await server.request("/club");
     expect(logger.error).toHaveBeenCalledTimes(2);
+    htmlCache.clear();
+    await server.request("/club");
+    expect(logger.error).toHaveBeenCalledTimes(3);
+    await server.request("/club");
+    expect(logger.error).toHaveBeenCalledTimes(3);
+  });
+
+  it("isolates a block whose child component throws: the page renders, uncached", async () => {
+    const fragile = defineBlock<{ text: string }>({
+      type: "demo.fragile",
+      label: "Fragile",
+      fields: { text: { type: "text" } },
+      defaultProps: { text: "" },
+      render: ({ text }) => createElement("p", null, text, createElement(Exploding)),
+    });
+    publish({
+      path: "/club",
+      data: content(
+        heading("Avant"),
+        { type: "demo.fragile", props: { id: "f", text: "jamais" } },
+        heading("Après"),
+      ),
+    });
+    const htmlCache = new HtmlCache();
+    const registry = createBlockRegistry([...coreBlocks, fragile]);
+    const server = app({ blocks: () => registry, htmlCache });
+    const response = await server.request("/club");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("Avant");
+    expect(html).toContain("Après");
+    expect(html).not.toContain("jamais");
+    expect(logger.error).toHaveBeenCalledWith(
+      "Bloc « demo.fragile » (f) non affiché sur la page /club",
+      expect.objectContaining({ name: "BlockComponentError" }),
+    );
+    expect(htmlCache.size).toBe(0);
+  });
+
+  it("does not cache a page invalidated while it was rendering", async () => {
+    publish({ path: "/club", data: content(heading("Ancien")) });
+    const htmlCache = new HtmlCache();
+    const slow = defineBlock<Record<string, never>>({
+      type: "demo.invalidating",
+      label: "Invalide",
+      fields: {},
+      defaultProps: {},
+      // Stands for a publication landing while the page renders (an asynchronous loader).
+      render: () => {
+        htmlCache.invalidate("/club");
+        return null;
+      },
+    });
+    const registry = createBlockRegistry([...coreBlocks, slow]);
+    const server = app({ blocks: () => registry, htmlCache });
+    await server.request("/club");
+    expect(htmlCache.get("/club")).toBeDefined();
+    db.update(pages)
+      .set({ publishedData: content({ type: "demo.invalidating", props: { id: "i" } }) })
+      .where(eq(pages.path, "/club"))
+      .run();
+    htmlCache.invalidate("/club");
+    expect((await server.request("/club")).status).toBe(200);
+    expect(htmlCache.get("/club")).toBeUndefined();
   });
 
   it("neutralizes scripts injected through blocks and metadata (XSS)", async () => {

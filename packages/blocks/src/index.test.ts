@@ -7,6 +7,7 @@ describe("entries of @sport-cms/blocks", () => {
     expect(root).not.toHaveProperty("renderPageContent");
     expect(root).not.toHaveProperty("sanitizeRichText");
     expect(Object.keys(server).sort()).toEqual([
+      "BlockComponentError",
       "MAX_NESTING_DEPTH",
       "renderPageContent",
       "sanitizeRichText",

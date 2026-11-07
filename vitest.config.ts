@@ -32,5 +32,11 @@ export default defineConfig({
   // Node-side tests run in Vite's `ssr` environment. Vitest appends its default
   // server conditions and forwards the list to the workers as `--conditions`.
   ssr: { resolve: { conditions: [SOURCE_CONDITION] } },
-  test: { projects },
+  test: {
+    projects,
+    // Modules installed in `DATA_DIR/modules/<id>/` are plain ESM files outside the workspace,
+    // imported by Node itself in production. Tests load them the same way (not through Vite's
+    // module runner), so the resolution hook that shares React and zod with them is exercised.
+    server: { deps: { external: [/[\\/]modules[\\/][^\\/]+[\\/][^\\/]+\.js$/] } },
+  },
 });

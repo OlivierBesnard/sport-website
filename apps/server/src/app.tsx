@@ -11,7 +11,7 @@ import type { Database } from "@sport-cms/db";
 import { buildThemeCss, defaultTheme, type ThemeTokens } from "@sport-cms/themes";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { HtmlCache } from "./html-cache.js";
+import { type CacheTicket, HtmlCache } from "./html-cache.js";
 import { DEFAULT_MENU, readNavigation } from "./navigation.js";
 import { findPublishedPage, type PublishedPage } from "./pages.js";
 import {
@@ -157,10 +157,39 @@ export function createApp(dependencies: AppDependencies): Hono {
   }
 
   /** The page document, and whether every block rendered (only then may it be cached). */
+  /**
+   * Failed blocks already logged, by page: a page with a failed block is not cached, so it is
+   * rendered again on every request, but its failures are logged once until the page is
+   * invalidated or the cache cleared (a new publication, other blocks… may change the outcome).
+   * Bounded by the published pages: entries of the past epochs are dropped at once.
+   */
+  let reportedEpoch = -1;
+  const reported = new Map<string, { ticket: CacheTicket; blocks: Set<string> }>();
+
+  /** Whether the failure of this block on this page is new for this version of the page. */
+  function firstReport(ticket: CacheTicket, type: string, id: string): boolean {
+    if (ticket.epoch !== reportedEpoch) {
+      reported.clear();
+      reportedEpoch = ticket.epoch;
+    }
+    let entry = reported.get(ticket.path);
+    if (entry === undefined || entry.ticket.generation !== ticket.generation) {
+      entry = { ticket, blocks: new Set() };
+      reported.set(ticket.path, entry);
+    }
+    const key = JSON.stringify([type, id]);
+    if (entry.blocks.has(key)) {
+      return false;
+    }
+    entry.blocks.add(key);
+    return true;
+  }
+
   function renderPage(
     path: string,
     page: PublishedPage,
     registry: BlockRegistry,
+    ticket: CacheTicket,
   ): { html: string; complete: boolean } {
     let complete = true;
     const image = safeImageUrl(page.image);
@@ -174,7 +203,12 @@ export function createApp(dependencies: AppDependencies): Hono {
       registry,
       onBlockError: (error, block) => {
         complete = false;
-        logger.error(`Bloc « ${block.type} » (${block.id}) non affiché sur la page ${path}`, error);
+        if (firstReport(ticket, block.type, block.id)) {
+          logger.error(
+            `Bloc « ${block.type} » (${block.id}) non affiché sur la page ${path}`,
+            error,
+          );
+        }
       },
     });
     // Rendering is synchronous: `complete` is final once the document is built.
@@ -250,13 +284,16 @@ export function createApp(dependencies: AppDependencies): Hono {
     if (cached !== undefined) {
       return sendPage(context, cached);
     }
+    // Taken before the page is read: if it is invalidated while it renders, the HTML of this
+    // render is served once but not cached.
+    const ticket = htmlCache.ticket(path);
     const page = findPublishedPage(db, path);
     if (page === undefined) {
       return context.notFound();
     }
-    const { html, complete } = renderPage(path, page, registry);
+    const { html, complete } = renderPage(path, page, registry, ticket);
     if (complete) {
-      htmlCache.set(path, html);
+      htmlCache.set(path, html, ticket);
     }
     return sendPage(context, html);
   });

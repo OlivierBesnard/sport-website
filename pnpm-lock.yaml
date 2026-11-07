@@ -123,6 +123,15 @@ importers:
       '@sport-cms/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@sport-cms/module-exemple':
+        specifier: workspace:*
+        version: link:../../modules/exemple
+      '@sport-cms/module-loader':
+        specifier: workspace:*
+        version: link:../../packages/module-loader
+      '@sport-cms/module-sdk':
+        specifier: workspace:*
+        version: link:../../packages/module-sdk
       '@sport-cms/themes':
         specifier: workspace:*
         version: link:../../packages/themes
@@ -160,6 +169,40 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  modules/exemple:
+    dependencies:
+      '@sport-cms/module-sdk':
+        specifier: workspace:*
+        version: link:../../packages/module-sdk
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@sport-cms/blocks':
+        specifier: workspace:*
+        version: link:../../packages/blocks
+      '@sport-cms/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -246,6 +289,80 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/module-loader:
+    dependencies:
+      '@sport-cms/blocks':
+        specifier: workspace:*
+        version: link:../blocks
+      '@sport-cms/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sport-cms/db':
+        specifier: workspace:*
+        version: link:../db
+      '@sport-cms/module-sdk':
+        specifier: workspace:*
+        version: link:../module-sdk
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)(kysely@0.29.8)
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+      semver:
+        specifier: ^7.8.6
+        version: 7.8.6
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@sport-cms/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/module-sdk:
+    dependencies:
+      '@sport-cms/blocks':
+        specifier: workspace:*
+        version: link:../blocks
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@sport-cms/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1797,6 +1914,9 @@ packages:
   '@types/sanitize-html@2.16.2':
     resolution: {integrity: sha512-kuAbgDCFv418flrp3z4o/4ufLA/5ovmXRH0L419iZCPGO7w00znjeDI5Wy/KZWNIBpDQc7hucCK+J5almB6FyA==}
 
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
+
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
 
@@ -2672,6 +2792,11 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
+    hasBin: true
+
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
+    engines: {node: '>=10'}
     hasBin: true
 
   set-cookie-parser@2.7.3:
@@ -4117,6 +4242,8 @@ snapshots:
     dependencies:
       htmlparser2: 12.0.0
 
+  '@types/semver@7.8.0': {}
+
   '@types/use-sync-external-store@0.0.6': {}
 
   '@types/whatwg-mimetype@3.0.2': {}
@@ -4845,6 +4972,8 @@ snapshots:
   scheduler@0.28.0: {}
 
   semver@6.3.1: {}
+
+  semver@7.8.6: {}
 
   set-cookie-parser@2.7.3: {}
 

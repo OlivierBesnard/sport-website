@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import type { BlockRegistry } from "../registry.js";
 import type { BlockProps, BlockRenderProps, SlotComponent, SlotProps } from "../types.js";
 import { isRecord, resolveProps } from "./props.js";
@@ -16,13 +16,28 @@ export interface BlockErrorContext {
   readonly id: string;
 }
 
+/**
+ * Reported for a block when a component it returned failed during the server rendering. React's
+ * synchronous server renderer does not hand over the original error: only the block is known.
+ */
+export class BlockComponentError extends Error {
+  constructor(block: BlockErrorContext) {
+    super(
+      `Un composant du bloc « ${block.type} » (${block.id}) a échoué pendant le rendu ` +
+        "(ou attend des données, ce que le rendu serveur ne prend pas en charge).",
+    );
+    this.name = "BlockComponentError";
+  }
+}
+
 export interface RenderOptions {
   /** Blocks that can be rendered; any other type is left out. */
   readonly registry: BlockRegistry;
   /**
-   * Called when the `render` function of a block throws: that block is left out and the rest of
-   * the page renders. Only errors thrown by `render` itself are caught this way; an error thrown
-   * later by a component it returns fails the whole rendering.
+   * Called when a block fails: that block (with its nested blocks) is left out and the rest of
+   * the page renders. Either its `render` function threw (`error` is what it threw), or a
+   * component it returned threw while React rendered it (`error` is a
+   * {@link BlockComponentError}: the original error is not available).
    */
   readonly onBlockError?: (error: unknown, block: BlockErrorContext) => void;
 }
@@ -67,7 +82,7 @@ function BlockList({ items, depth, options }: BlockListProps): ReactNode {
     return null;
   }
   return toEntries(items).map((entry) => (
-    <BlockItem key={entry.key} entry={entry} depth={depth} options={options} />
+    <IsolatedBlock key={entry.key} entry={entry} depth={depth} options={options} />
   ));
 }
 
@@ -106,6 +121,29 @@ interface BlockItemProps {
   readonly options: RenderOptions;
 }
 
+/**
+ * Rendered by React in place of a block whose components failed: the Suspense boundary around
+ * each block catches the error during the server rendering and renders this fallback instead
+ * (only then), which reports the block and shows nothing.
+ */
+function BlockFailure({ entry, options }: Omit<BlockItemProps, "depth">): ReactNode {
+  const block = { type: entry.type, id: entry.id };
+  options.onBlockError?.(new BlockComponentError(block), block);
+  return null;
+}
+
+/**
+ * One block inside its own boundary: an error thrown by any component it renders, at any depth,
+ * leaves out this block only (a nested block that fails leaves out itself, not its parent).
+ */
+function IsolatedBlock(props: BlockItemProps): ReactNode {
+  return (
+    <Suspense fallback={<BlockFailure entry={props.entry} options={props.options} />}>
+      <BlockItem {...props} />
+    </Suspense>
+  );
+}
+
 function BlockItem({ entry, depth, options }: BlockItemProps): ReactNode {
   const definition = options.registry.get(entry.type);
   if (definition === undefined) {
@@ -130,8 +168,10 @@ function BlockItem({ entry, depth, options }: BlockItemProps): ReactNode {
  *   is disabled) is left out, and so is an item that is not a `{ type, props }` object;
  * - props are checked against the block fields, falling back to the block defaults;
  * - rich text fields are sanitized and reach `render` as nodes, slots as components;
- * - a block whose `render` function throws is left out and reported to `onBlockError` (an error
- *   thrown later, by a component that `render` returned, is not caught here).
+ * - a block that fails is left out and reported to `onBlockError`, whether its `render` function
+ *   threw or a component it returned did (each block renders inside its own Suspense boundary,
+ *   which React's server renderer turns into its fallback on error). Rendered with
+ *   `renderToStaticMarkup`, the boundaries leave no marker in the HTML.
  *
  * Content that is not page data renders nothing. `root` and `zones` are not rendered: the page
  * layout belongs to the server, and the core blocks nest through slots, not drop zones.

@@ -2,7 +2,7 @@
   "name": "@sport-cms/server",
   "version": "0.0.0",
   "private": true,
-  "description": "Serveur de l'instance : site public (et, à venir, API du back-office, webhooks et tâches)",
+  "description": "Serveur de l'instance : site public, API du back-office, modules (et, à venir, webhooks et tâches)",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -16,6 +16,9 @@
     "@sport-cms/blocks": "workspace:*",
     "@sport-cms/core": "workspace:*",
     "@sport-cms/db": "workspace:*",
+    "@sport-cms/module-exemple": "workspace:*",
+    "@sport-cms/module-loader": "workspace:*",
+    "@sport-cms/module-sdk": "workspace:*",
     "@sport-cms/themes": "workspace:*",
     "better-auth": "^1.7.15",
     "drizzle-orm": "catalog:",

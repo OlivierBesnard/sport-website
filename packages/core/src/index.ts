@@ -12,3 +12,4 @@ export {
 } from "./auth.js";
 export { encodePagePath, normalizePagePath } from "./page-path.js";
 export { slugify } from "./slugify.js";
+export { CMS_VERSION } from "./version.js";

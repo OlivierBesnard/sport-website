@@ -42,4 +42,46 @@ describe("HtmlCache", () => {
     expect(cache.size).toBe(0);
     expect(cache.get("/")).toBeUndefined();
   });
+
+  describe("tickets", () => {
+    it("store the HTML of a render when nothing changed meanwhile", () => {
+      const cache = new HtmlCache();
+      const ticket = cache.ticket("/club/");
+      expect(cache.set("/club", "club", ticket)).toBe(true);
+      expect(cache.get("/club")).toBe("club");
+    });
+
+    it("drop the HTML of a render started before the page was invalidated", () => {
+      const cache = new HtmlCache();
+      const ticket = cache.ticket("/club");
+      cache.invalidate("/club");
+      expect(cache.set("/club", "périmé", ticket)).toBe(false);
+      expect(cache.get("/club")).toBeUndefined();
+      // A render started after the invalidation is stored.
+      expect(cache.set("/club", "à jour", cache.ticket("/club"))).toBe(true);
+    });
+
+    it("drop the HTML of a render started before the cache was cleared", () => {
+      const cache = new HtmlCache();
+      const ticket = cache.ticket("/club");
+      cache.invalidate("/club");
+      const later = cache.ticket("/club");
+      cache.clear();
+      expect(cache.set("/club", "périmé", ticket)).toBe(false);
+      expect(cache.set("/club", "périmé", later)).toBe(false);
+      expect(cache.size).toBe(0);
+    });
+
+    it("are not affected by the invalidation of another page", () => {
+      const cache = new HtmlCache();
+      const ticket = cache.ticket("/club");
+      cache.invalidate("/equipes");
+      expect(cache.set("/club", "club", ticket)).toBe(true);
+    });
+
+    it("only fit the page they were taken for", () => {
+      const cache = new HtmlCache();
+      expect(cache.set("/b", "b", cache.ticket("/a"))).toBe(false);
+    });
+  });
 });

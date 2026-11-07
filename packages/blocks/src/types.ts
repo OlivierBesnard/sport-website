@@ -9,10 +9,13 @@ import type { ElementType, ReactNode } from "react";
  * Field types are a subset of Puck's, with the same names and shapes.
  */
 
+/** Value a `select` or `radio` field can store. */
+export type OptionValue = string | number | boolean;
+
 /** A choice of a `select` or `radio` field. */
-export interface FieldOption {
+export interface FieldOption<Value extends OptionValue = OptionValue> {
   readonly label: string;
-  readonly value: string | number | boolean;
+  readonly value: Value;
 }
 
 interface BaseField {
@@ -47,14 +50,14 @@ export interface BooleanField extends BaseField {
   readonly type: "boolean";
 }
 
-export interface SelectField extends BaseField {
+export interface SelectField<Value extends OptionValue = OptionValue> extends BaseField {
   readonly type: "select";
-  readonly options: readonly FieldOption[];
+  readonly options: readonly FieldOption<Value>[];
 }
 
-export interface RadioField extends BaseField {
+export interface RadioField<Value extends OptionValue = OptionValue> extends BaseField {
   readonly type: "radio";
-  readonly options: readonly FieldOption[];
+  readonly options: readonly FieldOption<Value>[];
 }
 
 /** Nested blocks, stored as a list of {@link ComponentData}. */
@@ -67,18 +70,18 @@ export interface SlotField extends BaseField {
 }
 
 /** List of items, each an object described by `arrayFields`. */
-export interface ArrayField extends BaseField {
+export interface ArrayField<Item extends BlockProps = BlockProps> extends BaseField {
   readonly type: "array";
-  readonly arrayFields: Readonly<Record<string, Field>>;
+  readonly arrayFields: Fields<Item>;
   /** Props of an item added in the editor. */
-  readonly defaultItemProps?: Readonly<Record<string, unknown>>;
+  readonly defaultItemProps?: Readonly<Partial<Item>>;
   readonly min?: number;
   readonly max?: number;
 }
 
-export interface ObjectField extends BaseField {
+export interface ObjectField<Props extends BlockProps = BlockProps> extends BaseField {
   readonly type: "object";
-  readonly objectFields: Readonly<Record<string, Field>>;
+  readonly objectFields: Fields<Props>;
 }
 
 export type Field =
@@ -144,8 +147,56 @@ export type WithSlots<T> = T extends Slot
 /** Props received by `render`: the field values with slots ready to render, plus the block id. */
 export type BlockRenderProps<Props extends BlockProps> = WithSlots<Props> & { readonly id: string };
 
-/** One field per prop. */
-export type Fields<Props extends BlockProps> = { readonly [Key in keyof Props]-?: Field };
+/** A `select` or `radio` field whose options store values of type `Value`. */
+export type ChoiceField<Value extends OptionValue> = SelectField<Value> | RadioField<Value>;
+
+/**
+ * The fields that can edit a prop of type `Value`, so that a block's `fields` and its props type
+ * cannot disagree (a `Slot` prop needs a `slot` field, a `RichText` prop a `richtext` field…):
+ * - `Slot` → `slot`;
+ * - `string` → `text`, `textarea`, `select` or `radio`; a union of string literals (`"left" |
+ *   "center"`) → `select` or `radio` with options of those values only;
+ * - `number` → `number`, `select` or `radio`; a union of number literals → `select` or `radio`;
+ * - `boolean` → `boolean`, `select` or `radio`;
+ * - `RichText` → `richtext` (the stored HTML reaches `render` as a node, not a string);
+ * - a list of objects → `array` whose `arrayFields` match the item type;
+ * - an object → `object` whose `objectFields` match it.
+ * A prop typed `unknown` accepts any field.
+ */
+export type FieldFor<Value> = unknown extends Value
+  ? Field
+  : [ReactNode] extends [Value]
+    ? RichtextField
+    : DefinedFieldFor<Exclude<Value, undefined>>;
+
+/** {@link FieldFor} of a prop that is set (an optional prop is edited like a required one). */
+type DefinedFieldFor<Value> = [Value] extends [Slot]
+  ? SlotField
+  : [Value] extends [string]
+    ? string extends Value
+      ? TextField | TextareaField | ChoiceField<Value>
+      : ChoiceField<Value>
+    : [Value] extends [number]
+      ? number extends Value
+        ? NumberField | ChoiceField<Value>
+        : ChoiceField<Value>
+      : [Value] extends [boolean]
+        ? BooleanField | ChoiceField<Value>
+        : [Value] extends [readonly (infer Item)[]]
+          ? Item extends BlockProps
+            ? ArrayField<Item>
+            : never
+          : Value extends BlockProps
+            ? ObjectField<Value>
+            : never;
+
+/**
+ * One field per prop, of a type that can edit it ({@link FieldFor}). Without a precise props
+ * type (`BlockProps`, whose props are `unknown`), any field fits any prop.
+ */
+export type Fields<Props extends BlockProps> = {
+  readonly [Key in keyof Props]-?: FieldFor<Props[Key]>;
+};
 
 /** Definition of a block type, shared by the editor and the public renderer. */
 export interface BlockDefinition<Props extends BlockProps = BlockProps> {

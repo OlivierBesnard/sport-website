@@ -1,5 +1,5 @@
 import { createSecretKey, type KeyObject, randomBytes } from "node:crypto";
-import { type BlockRegistry, coreBlocks, createBlockRegistry } from "@sport-cms/blocks";
+import { type BlockRegistry, coreBlocks } from "@sport-cms/blocks";
 import type { Role } from "@sport-cms/core";
 import {
   createTestDatabase,
@@ -7,6 +7,7 @@ import {
   type JsonObject,
   user as userTable,
 } from "@sport-cms/db";
+import { type LoadedModule, ModuleHost } from "@sport-cms/module-loader";
 import { eq } from "drizzle-orm";
 import type { Hono } from "hono";
 import { type Mock, vi } from "vitest";
@@ -14,12 +15,13 @@ import { type AppDependencies, createApp, type Logger } from "./app.js";
 import { type Auth, createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
 import { HtmlCache } from "./html-cache.js";
+import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { pagesApiRoutes } from "./pages-api.js";
 
 /**
- * Test helpers for the admin API of the pages and the navigation: the auth routes are absent
- * here, but the sessions come from the same Better Auth instance (a session cookie is created
+ * Test helpers for the admin API of the pages, the navigation and the modules: the sessions come
+ * from the same Better Auth instance (a session cookie is created
  * by `signIn`). No secret is written anywhere: a fresh 256-bit key is generated per harness.
  */
 
@@ -30,10 +32,13 @@ export interface ApiHarness {
   readonly db: Database;
   readonly auth: Auth;
   readonly htmlCache: HtmlCache;
+  /** Block registry at creation (the core blocks, plus those of modules already enabled). */
   readonly blocks: BlockRegistry;
+  /** Modules of the harness (none unless given), behind `blocks` and `/api/modules`. */
+  readonly modules: ModuleHost;
   readonly logger: { error: Mock<Logger["error"]> };
   readonly secretKey: KeyObject;
-  /** The full instance application, with the admin API of the pages and the navigation. */
+  /** The full instance application, with the admin API of the pages, navigation and modules. */
   readonly app: (overrides?: Partial<AppDependencies>) => Hono;
   /** Creates an account of the given role via Better Auth, to sign in with `email`. */
   readonly createUser: (role: Role) => Promise<{ id: string; email: string }>;
@@ -43,29 +48,51 @@ export interface ApiHarness {
 
 const PASSWORD = "mot-de-passe-2026";
 
-export function createApiHarness(): ApiHarness {
+export interface ApiHarnessOptions {
+  /** Modules the instance loaded (none by default). */
+  readonly modules?: readonly LoadedModule[];
+}
+
+export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
   const db = createTestDatabase();
   const logger = { error: vi.fn<Logger["error"]>() };
   const secretKey = createSecretKey(randomBytes(32));
   const auth = createAuth({ db, baseUrl: BASE_URL, secretKey, logger });
   const htmlCache = new HtmlCache();
-  const registry = createBlockRegistry(coreBlocks);
-  const blocks = () => registry;
+  const modules = new ModuleHost({
+    db,
+    modules: options.modules ?? [],
+    coreBlocks,
+    secretKey,
+    logger,
+  });
+  const blocks = () => modules.blocks();
   const routes = (app: Hono): void => {
     authRoutes({ auth, db })(app);
     pagesApiRoutes({ auth, db, blocks, htmlCache })(app);
     navigationApiRoutes({ auth, db, htmlCache })(app);
+    modulesApiRoutes({ auth, modules, htmlCache })(app);
   };
 
   const harness: ApiHarness = {
     db,
     auth,
     htmlCache,
-    blocks: registry,
+    blocks: modules.blocks(),
+    modules,
     logger,
     secretKey,
     app: (overrides: Partial<AppDependencies> = {}) =>
-      createApp({ db, baseUrl: BASE_URL, secretKey, logger, routes, htmlCache, ...overrides }),
+      createApp({
+        db,
+        baseUrl: BASE_URL,
+        secretKey,
+        logger,
+        routes,
+        htmlCache,
+        blocks,
+        ...overrides,
+      }),
     createUser: async (role) => {
       const email = `${role}.${Date.now()}.${randomBytes(4).toString("hex")}@monclub.example`;
       await auth.api.signUpEmail({

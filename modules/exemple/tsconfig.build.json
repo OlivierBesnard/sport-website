@@ -1,0 +1,6 @@
+{
+  "extends": "@sport-cms/config/tsconfig.build.json",
+  "compilerOptions": {
+    "lib": ["es2025", "dom"]
+  }
+}

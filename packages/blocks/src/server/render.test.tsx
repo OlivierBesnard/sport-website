@@ -3,7 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { coreBlocks } from "../blocks/index.js";
 import { createBlockRegistry } from "../registry.js";
 import { type ComponentData, defineBlock, type Slot } from "../types.js";
-import { MAX_NESTING_DEPTH, type RenderOptions, renderPageContent } from "./render.js";
+import {
+  BlockComponentError,
+  MAX_NESTING_DEPTH,
+  type RenderOptions,
+  renderPageContent,
+} from "./render.js";
+
+/** A component that always fails while React renders it. */
+function Exploding(): never {
+  throw new Error("composant cassé");
+}
 
 const registry = createBlockRegistry(coreBlocks);
 
@@ -161,6 +171,70 @@ describe("renderPageContent", () => {
     expect(html).toContain('<section class="cms-section">');
     expect(onBlockError).toHaveBeenCalledOnce();
     expect(onBlockError).toHaveBeenCalledWith(new Error("boom"), { type: "Broken", id: "b" });
+  });
+
+  describe("a component returned by a block that throws", () => {
+    const fragile = defineBlock<{ label: string }>({
+      type: "exemple.fragile",
+      label: "Fragile",
+      fields: { label: { type: "text" } },
+      defaultProps: { label: "" },
+      render: ({ label }) => (
+        <div className="cms-rich-text">
+          <p>{label}</p>
+          <Exploding />
+        </div>
+      ),
+    });
+    const fragileRegistry = createBlockRegistry([...coreBlocks, fragile]);
+
+    it("leaves out that block only, reports it, and renders the rest of the page", () => {
+      const onBlockError = vi.fn();
+      const html = render(
+        page(
+          heading("a", "Avant"),
+          section(
+            "s",
+            { type: "exemple.fragile", props: { id: "f", label: "Jamais vu" } },
+            heading("b", "Après"),
+          ),
+        ),
+        { registry: fragileRegistry, onBlockError },
+      );
+      expect(html).toBe(
+        '<h2 class="cms-heading">Avant</h2><section class="cms-section">' +
+          '<div class="cms-container cms-stack"><h2 class="cms-heading">Après</h2></div></section>',
+      );
+      expect(onBlockError).toHaveBeenCalledOnce();
+      expect(onBlockError).toHaveBeenCalledWith(expect.any(BlockComponentError), {
+        type: "exemple.fragile",
+        id: "f",
+      });
+    });
+
+    it("keeps the parent block when a nested block fails", () => {
+      const onBlockError = vi.fn();
+      const html = render(
+        page(section("s", { type: "exemple.fragile", props: { id: "f", label: "x" } })),
+        { registry: fragileRegistry, onBlockError },
+      );
+      expect(html).toBe(
+        '<section class="cms-section"><div class="cms-container cms-stack"></div></section>',
+      );
+      expect(onBlockError).toHaveBeenCalledWith(expect.any(BlockComponentError), {
+        type: "exemple.fragile",
+        id: "f",
+      });
+    });
+
+    it("reports nothing when every block renders", () => {
+      const onBlockError = vi.fn();
+      render(page(section("s", heading("h", "Titre"))), {
+        registry: fragileRegistry,
+        onBlockError,
+      });
+      expect(onBlockError).not.toHaveBeenCalled();
+    });
   });
 
   it(`stops rendering nested blocks below depth ${MAX_NESTING_DEPTH}`, () => {

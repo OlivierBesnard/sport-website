@@ -1,0 +1,43 @@
+{
+  "name": "@sport-cms/module-loader",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Chargement des modules (officiels et installés dans DATA_DIR/modules), état, réglages et identifiants chiffrés",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@sport-cms/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "@sport-cms/source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sport-cms/blocks": "workspace:*",
+    "@sport-cms/core": "workspace:*",
+    "@sport-cms/db": "workspace:*",
+    "@sport-cms/module-sdk": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "react": "catalog:",
+    "semver": "^7.8.6",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@sport-cms/config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/semver": "^7.8.0",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

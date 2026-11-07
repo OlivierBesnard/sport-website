@@ -2,7 +2,7 @@ import type { RadioField } from "../types.js";
 
 export type Alignment = "left" | "center";
 
-export const alignmentField: RadioField = {
+export const alignmentField: RadioField<Alignment> = {
   type: "radio",
   label: "Alignement",
   options: [
