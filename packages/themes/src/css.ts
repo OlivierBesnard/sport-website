@@ -347,6 +347,43 @@ a {
   border-color: currentColor;
 }
 
+.cms-nav {
+  border-block-end: 1px solid var(--cms-color-border);
+  background: var(--cms-color-surface);
+}
+
+.cms-nav__inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.25rem;
+}
+
+.cms-nav__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+}
+
+.cms-nav__link {
+  display: inline-block;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--cms-radius);
+  color: var(--cms-color-text);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cms-nav__link:hover {
+  color: var(--cms-color-primary);
+  text-decoration: underline;
+}
+
 .cms-hero {
   padding-block: clamp(3rem, 2rem + 5vw, 6rem);
 }

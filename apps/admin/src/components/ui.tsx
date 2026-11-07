@@ -1,4 +1,9 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+} from "react";
 
 /**
  * Minimal components in the style of shadcn/ui (Tailwind, accessible), hand-written so the
@@ -48,6 +53,22 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
       )}
       {...rest}
     />
+  );
+}
+
+export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(
+        "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900",
+        "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-900",
+        "aria-[invalid=true]:border-red-600",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </select>
   );
 }
 

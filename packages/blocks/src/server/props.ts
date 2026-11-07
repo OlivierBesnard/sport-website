@@ -60,6 +60,8 @@ function resolveField(
         return value;
       }
       return isNumberWithin(fallback, field) ? fallback : (field.min ?? 0);
+    case "boolean":
+      return typeof value === "boolean" ? value : fallback === true;
     case "select":
     case "radio":
       return optionOr(field.options, value, fallback);

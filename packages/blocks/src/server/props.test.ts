@@ -13,6 +13,7 @@ const FIELDS: Readonly<Record<string, Field>> = {
   body: { type: "textarea" },
   text: { type: "richtext" },
   count: { type: "number", min: 1, max: 10 },
+  decorative: { type: "boolean" },
   level: {
     type: "select",
     options: [
@@ -42,6 +43,7 @@ const DEFAULTS = {
   body: "",
   text: "<p>Texte</p>",
   count: 3,
+  decorative: false,
   level: 2,
   variant: "a",
   content: [],
@@ -67,6 +69,7 @@ describe("resolveProps", () => {
       body: "Ligne",
       text: { html: "<p>Riche</p>" },
       count: 7,
+      decorative: false,
       level: 3,
       variant: "b",
       content: { slot: [{ type: "Heading", props: { id: "h" } }] },
@@ -81,6 +84,7 @@ describe("resolveProps", () => {
       body: "",
       text: { html: "<p>Texte</p>" },
       count: 3,
+      decorative: false,
       level: 2,
       variant: "a",
       content: { slot: [] },
@@ -112,12 +116,24 @@ describe("resolveProps", () => {
     }
   });
 
+  it("keeps only real booleans for boolean fields", () => {
+    expect(resolveProps(FIELDS, { decorative: true }, DEFAULTS, resolvers).decorative).toBe(true);
+    for (const decorative of ["true", 1, null, undefined]) {
+      expect(
+        resolveProps(FIELDS, { decorative }, DEFAULTS, resolvers).decorative,
+        String(decorative),
+      ).toBe(false);
+    }
+    expect(resolveProps(FIELDS, {}, { decorative: true }, resolvers).decorative).toBe(true);
+  });
+
   it("falls back to empty values when the defaults are invalid too", () => {
     expect(resolveProps(FIELDS, {}, {}, resolvers)).toEqual({
       title: "",
       body: "",
       text: { html: "" },
       count: 1,
+      decorative: false,
       level: 2,
       variant: "a",
       content: { slot: [] },

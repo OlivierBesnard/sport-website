@@ -1,5 +1,6 @@
 import { defineBlock } from "../types.js";
 import { safeImageUrl, safeLinkUrl } from "../url.js";
+import { imageAlt as altOf } from "./image.js";
 import { classNames } from "./shared.js";
 
 export type HeroProps = {
@@ -7,6 +8,7 @@ export type HeroProps = {
   subtitle: string;
   imageSrc: string;
   imageAlt: string;
+  decorative: boolean;
   ctaLabel: string;
   ctaHref: string;
 };
@@ -24,6 +26,10 @@ export const heroBlock = defineBlock<HeroProps>({
     subtitle: { type: "textarea", label: "Texte" },
     imageSrc: { type: "text", label: "Adresse de l'image" },
     imageAlt: { type: "text", label: "Texte alternatif de l'image" },
+    decorative: {
+      type: "boolean",
+      label: "Image décorative (aucun texte alternatif nécessaire)",
+    },
     ctaLabel: { type: "text", label: "Texte du bouton" },
     ctaHref: { type: "text", label: "Lien du bouton" },
   },
@@ -32,10 +38,11 @@ export const heroBlock = defineBlock<HeroProps>({
     subtitle: "",
     imageSrc: "",
     imageAlt: "",
+    decorative: false,
     ctaLabel: "",
     ctaHref: "",
   },
-  render: ({ title, subtitle, imageSrc, imageAlt, ctaLabel, ctaHref }) => {
+  render: ({ title, subtitle, imageSrc, imageAlt, decorative, ctaLabel, ctaHref }) => {
     const image = safeImageUrl(imageSrc);
     const ctaUrl = ctaLabel.trim() === "" ? undefined : safeLinkUrl(ctaHref);
     if (
@@ -67,7 +74,11 @@ export const heroBlock = defineBlock<HeroProps>({
             )}
           </div>
           {image !== undefined && (
-            <img className="cms-hero__image" src={image} alt={imageAlt.trim()} />
+            <img
+              className="cms-hero__image"
+              src={image}
+              alt={altOf({ alt: imageAlt, decorative })}
+            />
           )}
         </div>
       </section>

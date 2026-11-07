@@ -1,5 +1,5 @@
 import { type Database, type JsonObject, pages } from "@sport-cms/db";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 
 /** What the public site needs to render a page, all of it from its published version. */
 export interface PublishedPage {
@@ -9,6 +9,43 @@ export interface PublishedPage {
   readonly image: string | undefined;
   /** Published content, in Puck's format. */
   readonly data: JsonObject;
+}
+
+export interface PageRow {
+  readonly id: number;
+  readonly path: string;
+  readonly title: string;
+  readonly seo: Record<string, unknown> | null;
+  readonly draftData: JsonObject;
+  readonly publishedData: JsonObject | null;
+  readonly status: "draft" | "published";
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly publishedAt: Date | null;
+}
+
+/** Selects every column of `pages`; typed once, reused by the admin API. */
+export function pageSelection() {
+  return {
+    id: pages.id,
+    path: pages.path,
+    title: pages.title,
+    seo: pages.seo,
+    draftData: pages.draftData,
+    publishedData: pages.publishedData,
+    status: pages.status,
+    createdAt: pages.createdAt,
+    updatedAt: pages.updatedAt,
+    publishedAt: pages.publishedAt,
+  };
+}
+
+export function findPageRow(db: Database, path: string): PageRow | undefined {
+  return db.select(pageSelection()).from(pages).where(eq(pages.path, path)).get();
+}
+
+export function listPageRows(db: Database): PageRow[] {
+  return db.select(pageSelection()).from(pages).orderBy(asc(pages.path)).all();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,12 +68,16 @@ function rootProps(data: unknown): Record<string, unknown> {
  * The published version of the page at `path` (canonical form), or `undefined` when no page is
  * there or when it is not published: never published, or unpublished since.
  *
- * Title, description and sharing image are those of the published version: the root fields of
- * its data (`root.props.title`, `description`, `image`), so that editing the draft never changes
- * the public site. When one is missing or not a non-empty string, the `seo` column is used, then
- * the page name (`pages.title`) for the title. Unlike the root fields, those columns are not
- * versioned: they are read live, so editing them in the back-office changes the public site
- * without publishing; they only serve as a fallback for pages without root fields.
+ * Title, description and sharing image come from the published snapshot only: publication
+ * resolves them once and writes the result into the root fields of `published_data` (see
+ * `buildPublishedSnapshot` in `pages-api.ts`) — the title from the root field, then `seo.title`,
+ * then the `pages.title` column; the description and the image from the root fields, then the
+ * `pages.seo` columns. A page
+ * whose published data carries a non-empty `root.props.title` was published through the admin
+ * API and is fully self-contained — editing the draft, its name or its SEO columns afterwards
+ * never changes the public site until the next publication. Pages published before that rule
+ * (data without root fields) still fall back to the columns, which are then read live: they
+ * cannot be edited from the back-office anyway.
  */
 export function findPublishedPage(db: Database, path: string): PublishedPage | undefined {
   const row = db
@@ -48,10 +89,18 @@ export function findPublishedPage(db: Database, path: string): PublishedPage | u
     return undefined;
   }
   const root = rootProps(row.data);
-  // Raw SQL may have left something else than an object (JSON `null`, a string, a list).
+  if (nonEmpty(root.title) !== undefined) {
+    return {
+      title: nonEmpty(root.title) ?? row.title,
+      description: nonEmpty(root.description),
+      image: nonEmpty(root.image),
+      data: row.data,
+    };
+  }
+  // Legacy published data, without root fields: the (unversioned) columns serve as before.
   const seo: Record<string, unknown> = isRecord(row.seo) ? row.seo : {};
   return {
-    title: nonEmpty(root.title) ?? nonEmpty(seo.title) ?? row.title,
+    title: nonEmpty(seo.title) ?? row.title,
     description: nonEmpty(root.description) ?? nonEmpty(seo.description),
     image: nonEmpty(root.image) ?? nonEmpty(seo.image),
     data: row.data,

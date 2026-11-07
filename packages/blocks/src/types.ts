@@ -42,6 +42,11 @@ export interface NumberField extends BaseField {
   readonly step?: number;
 }
 
+/** A single on/off value, shown as a checkbox in the editor. */
+export interface BooleanField extends BaseField {
+  readonly type: "boolean";
+}
+
 export interface SelectField extends BaseField {
   readonly type: "select";
   readonly options: readonly FieldOption[];
@@ -81,6 +86,7 @@ export type Field =
   | TextareaField
   | RichtextField
   | NumberField
+  | BooleanField
   | SelectField
   | RadioField
   | SlotField

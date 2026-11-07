@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { NavigationLink } from "../navigation.js";
 
 /** Metadata of a page, for browsers, search engines and social networks. */
 export interface PageHead {
@@ -17,10 +18,40 @@ interface DocumentProps {
   readonly head: PageHead;
   /** Stylesheet of the theme; absent only for the error page shown when the theme is broken. */
   readonly stylesheetHref: string | undefined;
+  /** Entries of the main menu, rendered above the content of every page. */
+  readonly navigation?: readonly NavigationLink[] | undefined;
   readonly children: ReactNode;
 }
 
-function Document({ head, stylesheetHref, children }: DocumentProps) {
+/** The main menu of the site, above the page content; nothing at all when it is empty. */
+function SiteNavigation({ links }: { links: readonly NavigationLink[] | undefined }) {
+  if (links === undefined || links.length === 0) {
+    return null;
+  }
+  // Two entries may share a target: each one keeps its own stable key.
+  const seen = new Map<string, number>();
+  return (
+    <nav className="cms-nav" aria-label="Menu principal">
+      <div className="cms-container cms-nav__inner">
+        <ul className="cms-nav__list">
+          {links.map((link) => {
+            const count = seen.get(link.href) ?? 0;
+            seen.set(link.href, count + 1);
+            return (
+              <li key={count === 0 ? link.href : `${link.href}#${count}`}>
+                <a className="cms-nav__link" href={link.href}>
+                  {link.label}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </nav>
+  );
+}
+
+function Document({ head, stylesheetHref, navigation, children }: DocumentProps) {
   const { title, description, canonicalUrl, imageUrl, noIndex = false } = head;
   return (
     <html lang="fr">
@@ -44,6 +75,7 @@ function Document({ head, stylesheetHref, children }: DocumentProps) {
         {stylesheetHref !== undefined && <link rel="stylesheet" href={stylesheetHref} />}
       </head>
       <body>
+        <SiteNavigation links={navigation} />
         <main id="contenu">{children}</main>
       </body>
     </html>
@@ -55,9 +87,10 @@ export function renderDocument(
   head: PageHead,
   stylesheetHref: string | undefined,
   content: ReactNode,
+  navigation?: readonly NavigationLink[],
 ): string {
   const markup = renderToStaticMarkup(
-    <Document head={head} stylesheetHref={stylesheetHref}>
+    <Document head={head} stylesheetHref={stylesheetHref} navigation={navigation}>
       {content}
     </Document>,
   );

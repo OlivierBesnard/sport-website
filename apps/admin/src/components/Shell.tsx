@@ -3,10 +3,11 @@ import { NavLink, Outlet } from "react-router";
 import { signOut } from "../api/session";
 import { Button, Card, cn, FormError } from "./ui";
 
-/** Sections of the back-office; only the dashboard exists, the rest arrives with the steps. */
+/** Sections of the back-office; the ones a later step of the backlog will implement are grayed. */
 const MENU = [
   { to: "/", label: "Tableau de bord", enabled: true, end: true },
-  { to: "/pages", label: "Pages", enabled: false, end: false },
+  { to: "/pages", label: "Pages", enabled: true, end: false },
+  { to: "/navigation", label: "Navigation", enabled: true, end: false },
   { to: "/modules", label: "Modules", enabled: false, end: false },
   { to: "/reglages", label: "Réglages", enabled: false, end: false },
 ] as const;

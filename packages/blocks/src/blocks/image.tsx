@@ -4,8 +4,14 @@ import { safeImageUrl } from "../url.js";
 export type ImageProps = {
   src: string;
   alt: string;
+  decorative: boolean;
   caption: string;
 };
+
+/** Text the browser reads for an informative image; empty for a decorative one. */
+export function imageAlt(props: { alt: string; decorative: boolean }): string {
+  return props.decorative ? "" : props.alt.trim();
+}
 
 /** An image with its alternative text and an optional caption. */
 export const imageBlock = defineBlock<ImageProps>({
@@ -17,17 +23,21 @@ export const imageBlock = defineBlock<ImageProps>({
       type: "text",
       label: "Texte alternatif (ce que montre l'image, pour qui ne la voit pas)",
     },
+    decorative: {
+      type: "boolean",
+      label: "Image décorative (aucun texte alternatif nécessaire)",
+    },
     caption: { type: "text", label: "Légende" },
   },
-  defaultProps: { src: "", alt: "", caption: "" },
-  render: ({ src, alt, caption }) => {
+  defaultProps: { src: "", alt: "", decorative: false, caption: "" },
+  render: ({ src, alt, decorative, caption }) => {
     const url = safeImageUrl(src);
     if (url === undefined) {
       return null;
     }
     return (
       <figure className="cms-image">
-        <img src={url} alt={alt.trim()} loading="lazy" decoding="async" />
+        <img src={url} alt={imageAlt({ alt, decorative })} loading="lazy" decoding="async" />
         {caption.trim() !== "" && <figcaption>{caption}</figcaption>}
       </figure>
     );

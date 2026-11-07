@@ -97,6 +97,15 @@ describe("Image", () => {
     expect(renderBlock("Image", { src: "/media/motif.svg" })).toContain('alt=""');
   });
 
+  it("empties the alternative text of an informative image marked decorative", () => {
+    expect(
+      renderBlock("Image", { src: "/media/u13.jpg", alt: "L'équipe U13", decorative: true }),
+    ).toContain('alt=""');
+    expect(
+      renderBlock("Image", { src: "/media/u13.jpg", alt: "L'équipe U13", decorative: false }),
+    ).toContain('alt="L&#x27;équipe U13"');
+  });
+
   it("renders nothing without a safe address", () => {
     for (const src of [
       "",
@@ -184,6 +193,17 @@ describe("Hero", () => {
     expect(html).toContain(
       '<img class="cms-hero__image" src="/media/hero.jpg" alt="Mêlée au stade"/>',
     );
+  });
+
+  it("empties the alternative text of the image marked decorative", () => {
+    expect(
+      renderBlock("Hero", {
+        title: "US Exemple",
+        imageSrc: "/media/hero.jpg",
+        imageAlt: "Mêlée au stade",
+        decorative: true,
+      }),
+    ).toContain('alt=""');
   });
 
   it("leaves out empty parts and unsafe addresses", () => {

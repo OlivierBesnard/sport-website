@@ -10,7 +10,9 @@ import { encodePagePath, normalizePagePath } from "@sport-cms/core";
 import type { Database } from "@sport-cms/db";
 import { buildThemeCss, defaultTheme, type ThemeTokens } from "@sport-cms/themes";
 import { type Context, Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { HtmlCache } from "./html-cache.js";
+import { DEFAULT_MENU, readNavigation } from "./navigation.js";
 import { findPublishedPage, type PublishedPage } from "./pages.js";
 import {
   type PageHead,
@@ -18,7 +20,11 @@ import {
   renderNotFoundPage,
   renderServerErrorPage,
 } from "./render/document.js";
+import { sameOriginWrites } from "./same-origin.js";
 import { securityHeaders } from "./security-headers.js";
+
+/** Largest body accepted by the API (`/api/*`): 413 beyond. */
+export const MAX_API_BODY_BYTES = 4 * 1024 * 1024;
 
 /** Where the server reports errors (`console` by default). */
 export interface Logger {
@@ -80,6 +86,34 @@ function buildThemeAssets(theme: ThemeTokens): ThemeAssets {
 function sendHtml(context: Context, html: string, status: 200 | 404 | 500 = 200): Response {
   // Pages change when they are published: browsers and proxies revalidate them every time.
   return context.html(html, status, { "Cache-Control": status === 500 ? "no-store" : "no-cache" });
+}
+
+/** Strong entity tag of a page: the hash of the exact HTML served. */
+function etagOf(html: string): string {
+  return `"${createHash("sha256").update(html).digest("hex")}"`;
+}
+
+/** Whether an `If-None-Match` header lets the server answer 304 for this entity tag. */
+function ifNoneMatchSatisfied(header: string | undefined, etag: string): boolean {
+  if (header === undefined) {
+    return false;
+  }
+  if (header.trim() === "*") {
+    return true;
+  }
+  // Weak comparison, as RFC 9110 requires for If-None-Match: a `W/` prefix is ignored (a proxy
+  // that compresses the page may weaken the tag the client then sends back).
+  return header.split(",").some((candidate) => candidate.trim().replace(/^W\//, "") === etag);
+}
+
+/** Sends a page with its `ETag`, answering 304 when the client already has that exact HTML. */
+function sendPage(context: Context, html: string): Response {
+  const etag = etagOf(html);
+  if (ifNoneMatchSatisfied(context.req.header("If-None-Match"), etag)) {
+    // A 304 carries the metadata, never a body.
+    return context.newResponse(null, 304, { ETag: etag, "Cache-Control": "no-cache" });
+  }
+  return context.html(html, 200, { ETag: etag, "Cache-Control": "no-cache" });
 }
 
 /**
@@ -144,7 +178,12 @@ export function createApp(dependencies: AppDependencies): Hono {
       },
     });
     // Rendering is synchronous: `complete` is final once the document is built.
-    const html = renderDocument(head, themeAssets().stylesheetHref, content);
+    const html = renderDocument(
+      head,
+      themeAssets().stylesheetHref,
+      content,
+      readNavigation(db, DEFAULT_MENU),
+    );
     return { html, complete };
   }
 
@@ -162,6 +201,22 @@ export function createApp(dependencies: AppDependencies): Hono {
     }
   });
 
+  // Before the routes of the API: a write from another site never reaches them, nor does a body
+  // too large for any of them (the pages, the biggest, weigh a few hundred kilobytes at most).
+  app.use("/api/*", sameOriginWrites(baseUrl));
+  app.use(
+    "/api/*",
+    bodyLimit({
+      maxSize: MAX_API_BODY_BYTES,
+      onError: (context) =>
+        context.json(
+          {
+            error: `La requête est trop volumineuse (${MAX_API_BODY_BYTES / 1024 / 1024} Mo au maximum).`,
+          },
+          413,
+        ),
+    }),
+  );
   routes?.(app);
 
   app.get("/assets/:name", (context) => {
@@ -193,7 +248,7 @@ export function createApp(dependencies: AppDependencies): Hono {
     syncHtmlCache(theme(), registry);
     const cached = htmlCache.get(path);
     if (cached !== undefined) {
-      return sendHtml(context, cached);
+      return sendPage(context, cached);
     }
     const page = findPublishedPage(db, path);
     if (page === undefined) {
@@ -203,7 +258,7 @@ export function createApp(dependencies: AppDependencies): Hono {
     if (complete) {
       htmlCache.set(path, html);
     }
-    return sendHtml(context, html);
+    return sendPage(context, html);
   });
 
   app.notFound((context) => sendHtml(context, themeAssets().notFoundHtml, 404));

@@ -44,8 +44,10 @@ test("installation, sign-in, dashboard, sign-out", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Tableau de bord" })).toBeVisible();
   await expect(page.locator("aside").getByText(CLUB_NAME)).toBeVisible();
   await expect(page.getByRole("link", { name: "Tableau de bord" })).toBeVisible();
-  // The sections to come are grayed out with a « bientôt » badge.
-  await expect(page.getByText("bientôt")).toHaveCount(3);
+  // The pages and the navigation are there; the sections to come are grayed with a badge.
+  await expect(page.getByRole("link", { name: "Pages" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Navigation" })).toBeVisible();
+  await expect(page.getByText("bientôt")).toHaveCount(2);
 
   // Mobile first: the sidebar folds into a drawer, opened by the menu button.
   await page.setViewportSize({ width: 375, height: 800 });

@@ -2,8 +2,8 @@ import { ApiError, toApiError } from "./errors";
 
 export interface RequestJsonOptions {
   /** `GET` by default. */
-  readonly method?: "POST";
-  /** Body sent as JSON; absent for a `GET`. */
+  readonly method?: "GET" | "POST" | "PUT" | "DELETE";
+  /** Body sent as JSON; absent for a `GET` or a `DELETE` without body. */
   readonly body?: unknown;
   /** French message of the error when the response gives none (network shape, unknown code). */
   readonly fallback: string;

@@ -6,6 +6,9 @@ import { fetchSetupStatus } from "./api/setup";
 import { ComingSoonPage, Shell } from "./components/Shell";
 import { BootError, BootSplash } from "./components/Splash";
 import { DashboardPage } from "./routes/DashboardPage";
+import { NavigationPage } from "./routes/NavigationPage";
+import { PageEditorPage } from "./routes/PageEditorPage";
+import { PagesPage } from "./routes/PagesPage";
 import { SetupPage } from "./routes/SetupPage";
 import { SignInPage } from "./routes/SignInPage";
 
@@ -89,14 +92,8 @@ export function App() {
     <Routes>
       <Route element={<Shell clubName={boot.clubName} onSignedOut={reload} />}>
         <Route index element={<DashboardPage clubName={boot.clubName} user={boot.user} />} />
-        <Route
-          path="pages"
-          element={
-            <ComingSoonPage title="Pages">
-              La création et l'édition de pages arrivent avec la prochaine étape du CMS.
-            </ComingSoonPage>
-          }
-        />
+        <Route path="pages" element={<PagesPage />} />
+        <Route path="navigation" element={<NavigationPage />} />
         <Route
           path="modules"
           element={
@@ -114,6 +111,8 @@ export function App() {
           }
         />
       </Route>
+      {/* The editor takes the whole viewport, without the shell around it. */}
+      <Route path="pages/edition" element={<PageEditorPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

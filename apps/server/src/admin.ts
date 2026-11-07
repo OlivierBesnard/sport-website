@@ -25,16 +25,19 @@ export const ADMIN_PREFIX = "/admin";
  * Content-Security-Policy of the back-office. Unlike the public site, it runs JavaScript: the
  * bundle comes from the instance itself (`script-src 'self'`), the API is called same-origin
  * (`connect-src 'self'`), and styles may be inline (React sets `style` attributes; Tailwind
- * ships the stylesheet as a file). The back-office cannot frame the site, post a form
+ * ships the stylesheet as a file). The editor of the pages previews its work in an
+ * `about:srcdoc` iframe (`frame-src 'self' about:`), whose images are the ones of the site or
+ * any `https:` address the club may embed. The back-office cannot be framed, post a form
  * elsewhere or change its base URI.
  */
 export const ADMIN_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https:",
   "font-src 'self'",
   "connect-src 'self'",
+  "frame-src 'self' about:",
   "base-uri 'none'",
   "form-action 'self'",
   "frame-ancestors 'none'",

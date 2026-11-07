@@ -3,5 +3,9 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "exclude": ["${configDir}/src/**/*.test.ts", "${configDir}/src/auth/testing.ts"]
+  "exclude": [
+    "${configDir}/src/**/*.test.ts",
+    "${configDir}/src/auth/testing.ts",
+    "${configDir}/src/api-testing.ts"
+  ]
 }

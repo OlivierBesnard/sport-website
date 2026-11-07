@@ -3,6 +3,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { z } from "zod";
 import type { Logger } from "../app.js";
+import { fieldsOf } from "../fields.js";
 import type { Auth } from "./create-auth.js";
 
 /** Key of the settings row that serializes concurrent setups; removed once completed. */
@@ -64,24 +65,6 @@ export const setupSchema = z.object({
 });
 
 export type SetupInput = z.infer<typeof setupSchema>;
-
-/** Maps the issues of a failed validation to `{ "club.name": "message" }` in French. */
-function fieldsOf(error: z.ZodError): Record<string, string> {
-  const fields: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const path = issue.path.map(String).join(".");
-    if (fields[path] !== undefined) {
-      continue;
-    }
-    fields[path] =
-      issue.code === "invalid_type"
-        ? issue.input === undefined
-          ? "Ce champ est requis."
-          : "Ce champ est invalide."
-        : issue.message;
-  }
-  return fields;
-}
 
 function readClubName(db: Database): string | null {
   const value = db.select().from(settings).where(eq(settings.key, CLUB_NAME_KEY)).get()?.value;
