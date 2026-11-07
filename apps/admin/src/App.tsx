@@ -5,7 +5,10 @@ import { fetchSession } from "./api/session";
 import { fetchSetupStatus } from "./api/setup";
 import { ComingSoonPage, Shell } from "./components/Shell";
 import { BootError, BootSplash } from "./components/Splash";
+import { ModulesProvider } from "./modules/context";
 import { DashboardPage } from "./routes/DashboardPage";
+import { ModuleAdminPage } from "./routes/ModuleAdminPage";
+import { ModulesPage } from "./routes/ModulesPage";
 import { NavigationPage } from "./routes/NavigationPage";
 import { PageEditorPage } from "./routes/PageEditorPage";
 import { PagesPage } from "./routes/PagesPage";
@@ -88,32 +91,30 @@ export function App() {
     );
   }
 
+  // The enabled modules are loaded once the session is open: their blocks for the editor,
+  // their pages for the menu.
   return (
-    <Routes>
-      <Route element={<Shell clubName={boot.clubName} onSignedOut={reload} />}>
-        <Route index element={<DashboardPage clubName={boot.clubName} user={boot.user} />} />
-        <Route path="pages" element={<PagesPage />} />
-        <Route path="navigation" element={<NavigationPage />} />
-        <Route
-          path="modules"
-          element={
-            <ComingSoonPage title="Modules">
-              L'activation des modules (HelloAsso, statistiques…) arrive dans une prochaine version.
-            </ComingSoonPage>
-          }
-        />
-        <Route
-          path="reglages"
-          element={
-            <ComingSoonPage title="Réglages">
-              Les réglages du club et des utilisateurs arrivent dans une prochaine version.
-            </ComingSoonPage>
-          }
-        />
-      </Route>
-      {/* The editor takes the whole viewport, without the shell around it. */}
-      <Route path="pages/edition" element={<PageEditorPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ModulesProvider>
+      <Routes>
+        <Route element={<Shell clubName={boot.clubName} user={boot.user} onSignedOut={reload} />}>
+          <Route index element={<DashboardPage clubName={boot.clubName} user={boot.user} />} />
+          <Route path="pages" element={<PagesPage />} />
+          <Route path="navigation" element={<NavigationPage />} />
+          <Route path="modules" element={<ModulesPage />} />
+          <Route path="modules/:id/*" element={<ModuleAdminPage user={boot.user} />} />
+          <Route
+            path="reglages"
+            element={
+              <ComingSoonPage title="Réglages">
+                Les réglages du club et des utilisateurs arrivent dans une prochaine version.
+              </ComingSoonPage>
+            }
+          />
+        </Route>
+        {/* The editor takes the whole viewport, without the shell around it. */}
+        <Route path="pages/edition" element={<PageEditorPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ModulesProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,6 +43,34 @@ export const ADMIN_CONTENT_SECURITY_POLICY = [
   "form-action 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
+
+/**
+ * Inline import maps of `index.html` (the build writes one: it maps `react`,
+ * `@sport-cms/module-sdk`… to the copies of the back-office, for the client entries of the
+ * modules). The content between the tags, exactly as the browser hashes it.
+ */
+const IMPORT_MAP = /<script type="importmap">([\s\S]*?)<\/script>/g;
+
+/**
+ * Content-Security-Policy of `index.html`: the policy of the back-office, plus the hash of each
+ * inline import map it contains — the only inline script allowed (an import map is a script for
+ * CSP, and browsers do not load an external one).
+ */
+export function adminIndexContentSecurityPolicy(html: string): string {
+  const hashes = [...html.matchAll(IMPORT_MAP)].map(
+    (match) =>
+      `'sha256-${createHash("sha256")
+        .update(match[1] ?? "")
+        .digest("base64")}'`,
+  );
+  if (hashes.length === 0) {
+    return ADMIN_CONTENT_SECURITY_POLICY;
+  }
+  return ADMIN_CONTENT_SECURITY_POLICY.replace(
+    "script-src 'self'",
+    `script-src 'self' ${hashes.join(" ")}`,
+  );
+}
 
 const HTML_TYPE = "text/html; charset=utf-8";
 
@@ -164,10 +193,11 @@ export function adminRoutes({
     status: 200 | 404 | 500 | 503,
     cacheControl: string,
     contentType: string,
+    policy: string = ADMIN_CONTENT_SECURITY_POLICY,
   ): Response {
     return context.body(body, status, {
       "Cache-Control": cacheControl,
-      "Content-Security-Policy": ADMIN_CONTENT_SECURITY_POLICY,
+      "Content-Security-Policy": policy,
       "Content-Type": contentType,
     });
   }
@@ -184,7 +214,14 @@ export function adminRoutes({
   async function sendIndex(context: Context): Promise<Response> {
     try {
       const content = await readFile(join(directory, "index.html"));
-      return respond(context, new Uint8Array(content), 200, "no-cache", HTML_TYPE);
+      return respond(
+        context,
+        new Uint8Array(content),
+        200,
+        "no-cache",
+        HTML_TYPE,
+        adminIndexContentSecurityPolicy(content.toString("utf8")),
+      );
     } catch {
       return unavailable(context);
     }
@@ -224,6 +261,10 @@ export function adminRoutes({
         // `index.html` is revalidated, whatever it looks like in the request.
         target.startsWith(join(directory, "assets") + sep) ? ASSETS_CACHE_CONTROL : "no-cache",
         type,
+        // `/admin/index.html` asked by name carries its import map too.
+        type === HTML_TYPE
+          ? adminIndexContentSecurityPolicy(content.toString("utf8"))
+          : ADMIN_CONTENT_SECURITY_POLICY,
       );
     } catch (error) {
       const code = (error as NodeJS.ErrnoException | undefined)?.code;

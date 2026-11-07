@@ -241,13 +241,67 @@ function BlockPreview(props: {
   return props.definition.render(editorProps(props.definition, props.puckProps) as never);
 }
 
+/**
+ * Stand-in of a block whose type the registry does not know: a block of a module disabled or
+ * removed since the page was written. The public site leaves it out; the editor says so, in
+ * French, instead of Puck's English message, and the block can still be moved or deleted.
+ */
+function UnavailableBlock(props: { type: string }): ReactNode {
+  return (
+    <p role="note" className="cms-container">
+      Bloc indisponible (« {props.type} ») : il vient d'un module désactivé ou absent et n'est pas
+      affiché sur le site. Réactivez le module ou supprimez ce bloc.
+    </p>
+  );
+}
+
+/** Types of the blocks of `data` (content, zones and slots, at any depth) unknown to `registry`. */
+export function unavailableBlockTypes(data: unknown, registry: BlockRegistry): string[] {
+  const unknown = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item);
+      }
+      return;
+    }
+    if (typeof value !== "object" || value === null) {
+      return;
+    }
+    const record = value as { type?: unknown; props?: unknown };
+    if (typeof record.type === "string" && typeof record.props === "object") {
+      if (!registry.has(record.type)) {
+        unknown.add(record.type);
+      }
+      for (const prop of Object.values(record.props ?? {})) {
+        visit(prop);
+      }
+      return;
+    }
+    for (const nested of Object.values(record)) {
+      visit(nested);
+    }
+  };
+  const page = typeof data === "object" && data !== null ? data : {};
+  visit((page as { content?: unknown }).content);
+  visit((page as { zones?: unknown }).zones);
+  return [...unknown].sort();
+}
+
 export interface EditorConfig {
   readonly config: Config;
   readonly overrides: Overrides;
 }
 
-/** Builds the Puck configuration of a block registry, once per registry. */
-export function buildEditorConfig(registry: BlockRegistry): EditorConfig {
+/**
+ * Builds the Puck configuration of a block registry, once per registry. `unavailable`: block
+ * types of the page the registry does not know ({@link unavailableBlockTypes}), shown as a
+ * notice in the canvas and hidden from the drawer.
+ */
+export function buildEditorConfig(
+  registry: BlockRegistry,
+  unavailable: readonly string[] = [],
+): EditorConfig {
   const components: Record<string, unknown> = {};
   for (const [type, definition] of registry) {
     components[type] = {
@@ -257,8 +311,25 @@ export function buildEditorConfig(registry: BlockRegistry): EditorConfig {
       defaultProps: { ...definition.defaultProps },
     };
   }
+  const missing = unavailable.filter((type) => !registry.has(type));
+  for (const type of missing) {
+    components[type] = {
+      label: `Bloc indisponible (${type})`,
+      fields: {},
+      render: () => <UnavailableBlock type={type} />,
+    };
+  }
   const config = {
     components,
+    // Without stand-ins, no category: the drawer stays a plain list of the blocks.
+    ...(missing.length === 0
+      ? {}
+      : {
+          categories: {
+            unavailable: { components: missing, visible: false },
+            other: { title: "Blocs" },
+          },
+        }),
     root: {
       fields: ROOT_FIELDS,
       render: ({ children }: { children?: ReactNode }) => children ?? null,

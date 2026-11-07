@@ -95,8 +95,12 @@ export const moduleManifestSchema = z.object({ ...identityShape, engines: engine
 
 export type ModuleManifest = z.infer<typeof moduleManifestSchema>;
 
-/** zod's French messages, for the issues without a message of their own (given per parse). */
-const FRENCH = { error: z.locales.fr().localeError };
+/**
+ * zod's French messages, for the issues without a message of their own (given per parse), and
+ * the input in each issue: zod 4 leaves it out by default, and `issuesOf` tells a missing value
+ * from a wrong one by it.
+ */
+export const FRENCH = { error: z.locales.fr().localeError, reportInput: true };
 
 /** Result of a check: the value, or the problems found, in French. */
 export type ModuleCheck<Value> =
@@ -104,7 +108,7 @@ export type ModuleCheck<Value> =
   | { readonly success: false; readonly issues: readonly string[] };
 
 /** French messages of a failed validation, each prefixed by the path of the offending value. */
-function issuesOf(error: z.ZodError): string[] {
+export function issuesOf(error: z.ZodError): string[] {
   return error.issues.map((issue) => {
     const path = issue.path.map(String).join(".");
     const message =
@@ -123,7 +127,37 @@ export function parseModuleManifest(value: unknown): ModuleCheck<ModuleManifest>
     : { success: false, issues: issuesOf(result.error) };
 }
 
-function fn(message: string) {
+/**
+ * Adds an issue for each block type that does not start with `<id>.` or is declared twice: the
+ * types of a module never collide with the core's or another module's.
+ */
+export function checkBlockTypes(
+  id: string,
+  blocks: readonly { readonly type: string }[],
+  context: z.RefinementCtx,
+): void {
+  const prefix = `${id}.`;
+  const seen = new Set<string>();
+  for (const [index, block] of blocks.entries()) {
+    if (!block.type.startsWith(prefix) || block.type.length === prefix.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "type"],
+        message: `Le type du bloc « ${block.type} » doit commencer par « ${prefix} ».`,
+      });
+    }
+    if (seen.has(block.type)) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "type"],
+        message: `Le type de bloc « ${block.type} » est déclaré deux fois.`,
+      });
+    }
+    seen.add(block.type);
+  }
+}
+
+export function fn(message: string) {
   return z.custom<unknown>((value) => typeof value === "function", { error: message });
 }
 
@@ -137,7 +171,8 @@ function zodSchemaLike(label: string) {
   );
 }
 
-const blockSchema = z.looseObject({
+/** One block of a module, as its server or client entry declares it. */
+export const blockSchema = z.looseObject({
   // Checked as written (no trim): it is the key stored in page data.
   type: z
     .string({ error: "Le type du bloc doit être un texte." })
@@ -173,25 +208,7 @@ const definitionSchema = z
       .optional(),
   })
   .superRefine((definition, context) => {
-    const prefix = `${definition.id}.`;
-    const seen = new Set<string>();
-    for (const [index, block] of definition.blocks.entries()) {
-      if (!block.type.startsWith(prefix) || block.type.length === prefix.length) {
-        context.addIssue({
-          code: "custom",
-          path: ["blocks", index, "type"],
-          message: `Le type du bloc « ${block.type} » doit commencer par « ${prefix} ».`,
-        });
-      }
-      if (seen.has(block.type)) {
-        context.addIssue({
-          code: "custom",
-          path: ["blocks", index, "type"],
-          message: `Le type de bloc « ${block.type} » est déclaré deux fois.`,
-        });
-      }
-      seen.add(block.type);
-    }
+    checkBlockTypes(definition.id, definition.blocks, context);
   });
 
 /**

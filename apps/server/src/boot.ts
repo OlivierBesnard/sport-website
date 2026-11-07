@@ -10,9 +10,10 @@ import { createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
 import { HtmlCache } from "./html-cache.js";
 import { openInstance } from "./instance.js";
+import { type ModuleClientFiles, moduleClientFiles, moduleClientRoutes } from "./module-clients.js";
 import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
-import { officialModules } from "./official-modules.js";
+import { officialModuleClients, officialModules } from "./official-modules.js";
 import { pagesApiRoutes } from "./pages-api.js";
 
 /** Directory of `DATA_DIR` holding the installed modules, one directory each. */
@@ -29,6 +30,8 @@ export class StartupError extends Error {
 export interface BootOptions {
   /** Official modules (those of `modules/*` by default). */
   readonly officialModules?: readonly unknown[];
+  /** Client entries of the official modules, by id (those of `modules/*` by default). */
+  readonly officialModuleClients?: Readonly<Record<string, ModuleClientFiles>>;
   /** Version of the CMS checked against `engines.cms` (`CMS_VERSION` by default). */
   readonly cmsVersion?: string;
   /** Where the server reports errors (`console` by default). */
@@ -91,6 +94,11 @@ export async function bootInstance(
       secretKey,
       logger,
     });
+    const clients = moduleClientFiles(
+      loaded.modules,
+      options.officialModuleClients ??
+        (options.officialModules === undefined ? officialModuleClients : {}),
+    );
     const auth = createAuth({ db, baseUrl: config.baseUrl, secretKey, logger });
     const htmlCache = new HtmlCache();
     const blocks = () => modules.blocks();
@@ -103,6 +111,8 @@ export async function bootInstance(
       blocks,
       logger,
       routes: (routes) => {
+        // Before the back-office: its catch-all route would answer `/admin/_modules/*`.
+        moduleClientRoutes({ auth, modules, clients, logger })(routes);
         adminRoutes({ directory: adminDirectory, logger })(routes);
         authRoutes({ auth, db, logger })(routes);
         pagesApiRoutes({ auth, db, blocks, htmlCache, logger })(routes);

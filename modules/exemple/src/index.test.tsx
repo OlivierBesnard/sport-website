@@ -33,3 +33,23 @@ describe("module exemple", () => {
     expect(exemple.credentials?.safeParse({ apiKey: " " }).success).toBe(false);
   });
 });
+
+describe("client entry of the module exemple", () => {
+  it("declares the same block as the server entry, and a page of the back-office", async () => {
+    const { checkModuleClient } = await import("@sport-cms/module-sdk");
+    const { default: client } = await import("./client.js");
+    const result = checkModuleClient(client, "exemple");
+    expect(result.success).toBe(true);
+    expect(client.blocks).toEqual(exemple.blocks);
+    expect(client.adminPages?.map((page) => page.path)).toEqual(["a-propos"]);
+  });
+
+  it("renders its page with the module's identity", async () => {
+    const { AboutPage } = await import("./about-page.js");
+    const html = renderToStaticMarkup(
+      <AboutPage module={{ id: "exemple", name: "Exemple", version: "0.1.0" }} />,
+    );
+    expect(html).toContain("<h1>À propos du module Exemple</h1>");
+    expect(html).toContain("Version 0.1.0.");
+  });
+});

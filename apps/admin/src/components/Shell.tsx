@@ -1,16 +1,27 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { signOut } from "../api/session";
+import { type SessionUser, signOut, userCan } from "../api/session";
+import { useModules } from "../modules/context";
+import { canSeePage } from "../modules/load-clients";
 import { Button, Card, cn, FormError } from "./ui";
 
-/** Sections of the back-office; the ones a later step of the backlog will implement are grayed. */
-const MENU = [
+/**
+ * Sections of the back-office; the ones a later step of the backlog will implement are grayed,
+ * the ones needing a permission the user lacks are left out (the API refuses them anyway).
+ */
+const MENU: readonly {
+  to: string;
+  label: string;
+  enabled: boolean;
+  end: boolean;
+  permission?: string;
+}[] = [
   { to: "/", label: "Tableau de bord", enabled: true, end: true },
   { to: "/pages", label: "Pages", enabled: true, end: false },
   { to: "/navigation", label: "Navigation", enabled: true, end: false },
-  { to: "/modules", label: "Modules", enabled: false, end: false },
+  { to: "/modules", label: "Modules", enabled: true, end: true, permission: "modules.manage" },
   { to: "/reglages", label: "Réglages", enabled: false, end: false },
-] as const;
+];
 
 function MenuIcon() {
   return (
@@ -116,6 +127,8 @@ function MenuItem({
 export interface ShellProps {
   /** Name of the club, shown in the sidebar and the mobile bar; `null` before it is known. */
   readonly clubName: string | null;
+  /** The signed-in user: the menu follows their permissions. */
+  readonly user: SessionUser;
   /** Called once the session is closed, to bring the back-office back to the sign-in. */
   readonly onSignedOut: () => void;
 }
@@ -124,7 +137,9 @@ export interface ShellProps {
  * Shell of the back-office: a collapsible sidebar (drawer on mobile, icons only on desktop
  * when folded) and the page content. Mobile first: everything is usable with one thumb.
  */
-export function Shell({ clubName, onSignedOut }: ShellProps) {
+export function Shell({ clubName, user, onSignedOut }: ShellProps) {
+  const { pages } = useModules();
+  const modulePages = pages.filter((page) => canSeePage(user, page));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -206,7 +221,9 @@ export function Shell({ clubName, onSignedOut }: ShellProps) {
             </button>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-            {MENU.map((item) => (
+            {MENU.filter(
+              (item) => item.permission === undefined || userCan(user, item.permission),
+            ).map((item) => (
               <MenuItem
                 key={item.to}
                 to={item.to}
@@ -216,6 +233,27 @@ export function Shell({ clubName, onSignedOut }: ShellProps) {
                 collapsed={collapsed}
               />
             ))}
+            {modulePages.length > 0 && (
+              <div className="space-y-1 pt-3">
+                <p
+                  className={cn(
+                    "px-3 text-xs font-semibold uppercase text-slate-400",
+                    collapsed && "md:hidden",
+                  )}
+                >
+                  Pages des modules
+                </p>
+                {modulePages.map((page) => (
+                  <MenuItem
+                    key={`${page.module.id}/${page.path}`}
+                    to={`/modules/${page.module.id}/${page.path}`}
+                    label={`${page.title} (${page.module.name})`}
+                    enabled
+                    collapsed={collapsed}
+                  />
+                ))}
+              </div>
+            )}
           </nav>
           <div className="space-y-2 border-t border-slate-200 p-3">
             {signOutError !== undefined && <FormError message={signOutError} />}

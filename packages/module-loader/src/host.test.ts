@@ -319,6 +319,13 @@ describe("settings", () => {
     }
   });
 
+  it("tell a value of the wrong type from a missing one", () => {
+    const wrongType = host().updateSettings("demo", { size: "grand" }, null);
+    expect(wrongType.ok === false && wrongType.fields?.size).toBe("Ce champ est invalide.");
+    const credentials = host().setCredentials("demo", {}, null);
+    expect(credentials.ok === false && credentials.fields?.token).toBe("Ce champ est requis.");
+  });
+
   it("are refused for a module without settings", () => {
     const bare = defineModule({ id: "nu", name: "Nu", version: "1.0.0" });
     expect(host({ modules: [loaded(bare)] }).updateSettings("nu", {}, null)).toMatchObject({

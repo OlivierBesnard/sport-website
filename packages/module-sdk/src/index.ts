@@ -30,6 +30,14 @@ export {
   type TextareaField,
   type TextField,
 } from "@sport-cms/blocks";
+export {
+  ADMIN_PAGE_PATH_PATTERN,
+  type AdminPageDefinition,
+  type AdminPageProps,
+  checkModuleClient,
+  defineModuleClient,
+  type ModuleClientDefinition,
+} from "./client.js";
 export type { ModuleContext, ModuleKv, ModuleLogger } from "./context.js";
 export {
   type DataProcessing,

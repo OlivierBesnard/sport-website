@@ -1,8 +1,8 @@
 import "@puckeditor/core/puck.css";
 import { Puck, type Data as PuckData, type Viewport } from "@puckeditor/core";
-import { coreBlocks, createBlockRegistry, type PageData } from "@sport-cms/blocks";
+import type { PageData } from "@sport-cms/blocks";
 import { buildThemeCss, defaultTheme } from "@sport-cms/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ApiError } from "../api/errors";
 import {
@@ -21,7 +21,9 @@ import {
   EditorRegistryContext,
   fromPuckData,
   toPuckData,
+  unavailableBlockTypes,
 } from "../editor/puck-config";
+import { useModules } from "../modules/context";
 
 /**
  * Editor of one page: the same block definitions the public site renders, the draft saved on
@@ -29,10 +31,10 @@ import {
  * preview runs in the Puck canvas, in a mobile or a desktop viewport, styled by the stylesheet of
  * the public site — the default theme, the one the instance serves until the theme of the club
  * becomes configurable (the editor will then read it from the instance).
+ *
+ * The blocks are those of the core and of the enabled modules (`useModules`, the same set the
+ * server renders); a block of the page whose module is disabled or absent shows as a notice.
  */
-
-const registry = createBlockRegistry(coreBlocks);
-const { config, overrides } = buildEditorConfig(registry);
 const siteStylesheet = buildThemeCss(defaultTheme);
 
 /** The viewports of the preview: a phone and a laptop, the sizes the club thinks in. */
@@ -49,6 +51,8 @@ export function PageEditorPage() {
   const [search] = useSearchParams();
   const path = search.get("chemin") ?? "";
 
+  const modules = useModules();
+  const { registry } = modules;
   const [page, setPage] = useState<PageDraft>();
   const [loadError, setLoadError] = useState<string>();
   const [actionError, setActionError] = useState<string>();
@@ -103,6 +107,24 @@ export function PageEditorPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  /**
+   * Configuration of Puck: the registry, plus a stand-in for each block type of the saved draft
+   * it does not know. Rebuilt when the registry changes (a module enabled meanwhile) or the
+   * stand-ins of the loaded draft do, not on every keystroke nor on every save.
+   */
+  const draftData = page?.draftData;
+  const loaded = draftData !== undefined;
+  // A key, not the list: saving the draft gives a new object with the same stand-ins, and a new
+  // configuration would make Puck redo its work for nothing.
+  const unavailableKey = loaded ? unavailableBlockTypes(draftData, registry).join(" ") : "";
+  const editor = useMemo(
+    () =>
+      loaded
+        ? buildEditorConfig(registry, unavailableKey === "" ? [] : unavailableKey.split(" "))
+        : undefined,
+    [registry, loaded, unavailableKey],
+  );
 
   const firstFieldMessage = (): string => {
     const first = Object.values(actionFields ?? {})[0];
@@ -206,9 +228,18 @@ export function PageEditorPage() {
     );
   }
 
-  if (page === undefined) {
+  // The blocks of the modules must be known before Puck reads the page.
+  if (page === undefined || modules.status === "loading" || editor === undefined) {
     return <div className="min-h-dvh bg-slate-100" />;
   }
+  const { config, overrides } = editor;
+  const modulesProblem =
+    modules.error ??
+    (modules.problems.length === 0
+      ? undefined
+      : `Des blocs de modules manquent dans l'éditeur : ${modules.problems
+          .map((problem) => `${problem.name} — ${problem.message}`)
+          .join(" ")}`);
 
   return (
     <div className="flex h-dvh flex-col bg-slate-100">
@@ -250,6 +281,14 @@ export function PageEditorPage() {
           Historique
         </Button>
       </header>
+      {modulesProblem !== undefined && (
+        <p
+          role="status"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900"
+        >
+          {modulesProblem}
+        </p>
+      )}
       {(actionError !== undefined || actionFields !== undefined) && (
         <div className="border-b border-red-200 bg-red-50 px-4 py-2">
           <FormError message={firstFieldMessage()} />

@@ -6,10 +6,13 @@ import { defineModule, type ModuleContext } from "./index.js";
 describe("root entry of @sport-cms/module-sdk", () => {
   it("exports the module and block helpers", () => {
     expect(Object.keys(sdk).sort()).toEqual([
+      "ADMIN_PAGE_PATH_PATTERN",
       "MODULE_ID_PATTERN",
+      "checkModuleClient",
       "checkModuleDefinition",
       "defineBlock",
       "defineModule",
+      "defineModuleClient",
       "moduleManifestSchema",
       "parseModuleManifest",
       "safeImageUrl",

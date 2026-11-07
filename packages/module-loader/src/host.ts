@@ -152,9 +152,11 @@ function propertiesOf(schema: JsonObject | null): string[] {
 
 /**
  * French messages for the issues a module schema leaves without its own message (zod's French
- * locale, given per parse: the global configuration of zod stays untouched).
+ * locale, given per parse: the global configuration of zod stays untouched), with the input of
+ * each issue (zod 4 leaves it out by default), so that `fieldsOf` tells a missing value from a
+ * wrong one.
  */
-const FRENCH = { error: z.locales.fr().localeError };
+const FRENCH = { error: z.locales.fr().localeError, reportInput: true };
 
 /** Parses `input` with a module schema, reporting in French. */
 function parseWith<Output>(schema: z.ZodType<Output>, input: unknown) {

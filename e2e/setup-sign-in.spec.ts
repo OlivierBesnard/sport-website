@@ -47,7 +47,8 @@ test("installation, sign-in, dashboard, sign-out", async ({ page }) => {
   // The pages and the navigation are there; the sections to come are grayed with a badge.
   await expect(page.getByRole("link", { name: "Pages" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Navigation" })).toBeVisible();
-  await expect(page.getByText("bientôt")).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Modules" })).toBeVisible();
+  await expect(page.getByText("bientôt")).toHaveCount(1);
 
   // Mobile first: the sidebar folds into a drawer, opened by the menu button.
   await page.setViewportSize({ width: 375, height: 800 });

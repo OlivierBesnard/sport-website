@@ -1,3 +1,4 @@
+import { can, ROLES, type Role } from "@sport-cms/core";
 import { requestJson } from "./client";
 import { ApiError } from "./errors";
 
@@ -7,6 +8,15 @@ export interface SessionUser {
   readonly name: string;
   readonly email: string;
   readonly role: string;
+}
+
+/**
+ * Whether the user holds `permission` (`can` of `@sport-cms/core`): for the interface only,
+ * the API checks it again. An unknown role holds nothing.
+ */
+export function userCan(user: SessionUser, permission: string): boolean {
+  const role = (ROLES as readonly string[]).includes(user.role) ? (user.role as Role) : undefined;
+  return can({ role }, permission);
 }
 
 interface SessionPayload {

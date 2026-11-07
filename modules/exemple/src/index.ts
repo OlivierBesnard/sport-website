@@ -22,10 +22,18 @@ export default defineModule({
       .string()
       .trim()
       .max(100, "La signature est trop longue (100 caractères maximum).")
-      .default(""),
+      .default("")
+      .meta({
+        title: "Signature",
+        description: "Un exemple de réglage : un texte libre de 100 caractères au plus.",
+      }),
   }),
   credentials: z.object({
-    apiKey: z.string().trim().min(1, "La clé d'API est requise."),
+    apiKey: z
+      .string()
+      .trim()
+      .min(1, "La clé d'API est requise.")
+      .meta({ title: "Clé d'API", description: "Un exemple d'identifiant, stocké chiffré." }),
   }),
   blocks: [quoteBlock],
   lifecycle: {

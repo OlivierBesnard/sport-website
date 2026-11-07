@@ -1,4 +1,4 @@
-import { createSecretKey, randomBytes } from "node:crypto";
+import { createHash, createSecretKey, randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +6,7 @@ import { createTestDatabase } from "@sport-cms/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ADMIN_CONTENT_SECURITY_POLICY,
+  adminIndexContentSecurityPolicy,
   adminRoutes,
   decodeAdminPath,
   fileWithin,
@@ -132,6 +133,34 @@ describe("GET /admin", () => {
     const home = await server.request("/");
     expect(home.headers.get("Content-Security-Policy")).toBe(CONTENT_SECURITY_POLICY);
     expect(CONTENT_SECURITY_POLICY).not.toBe(ADMIN_CONTENT_SECURITY_POLICY);
+  });
+});
+
+describe("import map of the back-office", () => {
+  const map = '{"imports":{"react":"/admin/assets/react-Ab12.js"}}';
+  const html = `<!DOCTYPE html><head><script type="importmap">${map}</script></head>`;
+  const hash = `'sha256-${createHash("sha256").update(map).digest("base64")}'`;
+
+  it("allows exactly the inline import map of index.html, by its hash", () => {
+    const policy = adminIndexContentSecurityPolicy(html);
+    expect(policy).toContain(`script-src 'self' ${hash};`);
+    expect(policy.replace(` ${hash}`, "")).toBe(ADMIN_CONTENT_SECURITY_POLICY);
+  });
+
+  it("keeps the plain policy without an import map", () => {
+    expect(adminIndexContentSecurityPolicy("<title>admin</title>")).toBe(
+      ADMIN_CONTENT_SECURITY_POLICY,
+    );
+  });
+
+  it("sends that policy with index.html, by its route or by its name", async () => {
+    writeFileSync(join(directory, "index.html"), html);
+    for (const path of ["/admin", "/admin/pages", "/admin/index.html"]) {
+      const response = await buildApp().request(path);
+      expect(response.headers.get("Content-Security-Policy"), path).toContain(hash);
+    }
+    const asset = await buildApp().request("/admin/assets/app-B1h23.js");
+    expect(asset.headers.get("Content-Security-Policy")).toBe(ADMIN_CONTENT_SECURITY_POLICY);
   });
 });
 

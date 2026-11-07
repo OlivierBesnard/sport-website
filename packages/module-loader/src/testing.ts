@@ -17,6 +17,28 @@ export interface ModuleFixture {
   readonly server?: string | null;
   /** Directory name, the id by default. */
   readonly directory?: string;
+  /** Code of `client.js` (the client entry of the back-office); absent by default. */
+  readonly client?: string;
+}
+
+/** `client.js` of the fixture module: its block, for the editor, as a module author ships it. */
+export function fixtureClientSource(id: string): string {
+  return `import { jsx } from "react/jsx-runtime";
+import { defineModuleClient } from "@sport-cms/module-sdk";
+
+export default defineModuleClient({
+  id: ${JSON.stringify(id)},
+  blocks: [
+    {
+      type: ${JSON.stringify(`${id}.badge`)},
+      label: "Badge",
+      fields: { text: { type: "text", label: "Texte" } },
+      defaultProps: { text: "" },
+      render: ({ text }) => jsx("p", { className: "cms-heading", children: "Badge : " + text }),
+    },
+  ],
+});
+`;
 }
 
 /** `server.js` of a module with one block `<id>.badge`, settings and credentials. */
@@ -64,6 +86,9 @@ export function writeModuleFixture(modulesDirectory: string, fixture: ModuleFixt
   );
   if (fixture.server !== null) {
     writeFileSync(join(directory, "server.js"), fixture.server ?? fixtureServerSource(id, version));
+  }
+  if (fixture.client !== undefined) {
+    writeFileSync(join(directory, "client.js"), fixture.client);
   }
   return directory;
 }

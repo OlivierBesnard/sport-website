@@ -1,6 +1,7 @@
 import { coreBlocks, createBlockRegistry } from "@sport-cms/blocks";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { buildEditorConfig, fromPuckData, toPuckData } from "./puck-config";
+import { buildEditorConfig, fromPuckData, toPuckData, unavailableBlockTypes } from "./puck-config";
 
 /**
  * The Puck configuration of the editor is built from the same registry as the public renderer
@@ -58,6 +59,56 @@ describe("buildEditorConfig", () => {
     const built = components();
     const hero = registry.get("Hero");
     expect(built.Hero?.defaultProps).not.toBe(hero?.defaultProps);
+  });
+});
+
+describe("blocks of disabled modules", () => {
+  const page = {
+    root: { props: {} },
+    content: [
+      {
+        type: "Section",
+        props: {
+          id: "s",
+          content: [
+            { type: "exemple.citation", props: { id: "q", text: "Allez" } },
+            { type: "Heading", props: { id: "h", text: "Titre" } },
+          ],
+        },
+      },
+      { type: "autre.badge", props: { id: "b" } },
+    ],
+    zones: { "s:legacy": [{ type: "exemple.citation", props: { id: "z" } }] },
+  };
+
+  it("finds the types the registry does not know, at any depth", () => {
+    expect(unavailableBlockTypes(page, registry)).toEqual(["autre.badge", "exemple.citation"]);
+    expect(unavailableBlockTypes({ content: [] }, registry)).toEqual([]);
+    expect(unavailableBlockTypes(null, registry)).toEqual([]);
+  });
+
+  it("shows them as a French notice, hidden from the drawer", () => {
+    const { config } = buildEditorConfig(registry, ["exemple.citation", "Heading"]);
+    const built = config as unknown as {
+      components: Record<string, { label: string; render: () => React.ReactElement }>;
+      categories?: Record<string, { components?: string[]; visible?: boolean }>;
+    };
+    const standIn = built.components["exemple.citation"];
+    expect(standIn?.label).toBe("Bloc indisponible (exemple.citation)");
+    expect(renderToStaticMarkup(standIn?.render() ?? <span />)).toContain(
+      "module désactivé ou absent",
+    );
+    // A known type is never replaced.
+    expect(built.components.Heading?.label).toBe(registry.get("Heading")?.label);
+    expect(built.categories?.unavailable).toEqual({
+      components: ["exemple.citation"],
+      visible: false,
+    });
+  });
+
+  it("adds no category without stand-ins", () => {
+    const { config } = buildEditorConfig(registry);
+    expect((config as unknown as { categories?: unknown }).categories).toBeUndefined();
   });
 });
 

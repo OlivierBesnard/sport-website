@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { signIn } from "./session.js";
 
 /**
  * The pages flow against the compiled server, after `setup-sign-in.spec.ts` installed the
@@ -10,8 +11,6 @@ import { expect, type Page, test } from "@playwright/test";
  * next publication.
  */
 
-const OWNER_EMAIL = "jeanne@us-e2e.example";
-const OWNER_PASSWORD = "mot-de-passe-2026";
 const PATH = "/notre-club";
 const EDITOR_URL = `/admin/pages/edition?chemin=${encodeURIComponent(PATH)}`;
 
@@ -33,25 +32,6 @@ async function openEditor(page: Page): Promise<void> {
 /** The publish control of Puck's header (a span, not a button). */
 function publishButton(page: Page) {
   return page.getByText("Publier", { exact: true });
-}
-
-/** Signs the owner in, waiting for the sign-in rate limiter to free a slot if needed. */
-async function signIn(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    await page.goto("/admin/connexion");
-    await page.getByLabel("Adresse électronique").fill(OWNER_EMAIL);
-    await page.getByLabel("Mot de passe").fill(OWNER_PASSWORD);
-    await page.getByRole("button", { name: "Se connecter" }).click();
-    try {
-      await expect(page).toHaveURL(/\/admin$/, { timeout: 3_000 });
-      return;
-    } catch {
-      // Not signed in yet: with any luck only the rate limiter stood in the way.
-    }
-    await expect(page.getByText("Trop de tentatives. Réessayez dans un instant.")).toBeVisible();
-    await page.waitForTimeout(10_000);
-  }
-  throw new Error("Connexion impossible : le limiteur de débit n'a pas libéré de créneau.");
 }
 
 test("create a page, edit it in Puck, publish it and see it on the public site", async ({
