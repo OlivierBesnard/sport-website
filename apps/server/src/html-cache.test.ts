@@ -84,4 +84,40 @@ describe("HtmlCache", () => {
       expect(cache.set("/b", "b", cache.ticket("/a"))).toBe(false);
     });
   });
+
+  describe("dependencies on events", () => {
+    it("forgets the pages that depend on an event, and only them", () => {
+      const cache = new HtmlCache();
+      cache.set("/", "accueil", cache.ticket("/"), ["match.result_published", "post.published"]);
+      cache.set("/equipes", "équipes", cache.ticket("/equipes"), ["match.result_published"]);
+      cache.set("/contact", "contact", cache.ticket("/contact"));
+      expect(cache.invalidateDependency("match.result_published")).toBe(2);
+      expect(cache.get("/")).toBeUndefined();
+      expect(cache.get("/equipes")).toBeUndefined();
+      expect(cache.get("/contact")).toBe("contact");
+      expect(cache.invalidateDependency("match.result_published")).toBe(0);
+    });
+
+    it("keeps no stale dependency once a page is stored again or invalidated", () => {
+      const cache = new HtmlCache();
+      cache.set("/", "v1", cache.ticket("/"), ["post.published"]);
+      cache.set("/", "v2", cache.ticket("/"), []);
+      expect(cache.invalidateDependency("post.published")).toBe(0);
+      expect(cache.get("/")).toBe("v2");
+      cache.set("/a", "a", cache.ticket("/a"), ["post.published"]);
+      cache.invalidate("/a");
+      cache.set("/a", "a", cache.ticket("/a"));
+      expect(cache.invalidateDependency("post.published")).toBe(0);
+    });
+
+    it("does not store a render started before its dependency was invalidated", () => {
+      const cache = new HtmlCache();
+      const ticket = cache.ticket("/");
+      cache.invalidateDependency("match.updated");
+      expect(cache.set("/", "périmé", ticket, ["match.updated"])).toBe(false);
+      // A render depending on something else is not concerned.
+      expect(cache.set("/", "frais", ticket, ["post.published"])).toBe(true);
+      expect(cache.set("/x", "x", cache.ticket("/x"), ["match.updated"])).toBe(true);
+    });
+  });
 });

@@ -7,6 +7,7 @@ export {
   IN_MEMORY,
   openDatabase,
 } from "./database.js";
+export { type EventEntry, emitEvent } from "./events.js";
 export type { JsonObject, JsonValue, StoredJson } from "./json.js";
 export { MIGRATIONS_FOLDER, MIGRATIONS_TABLE, type MigrateOptions, migrate } from "./migrate.js";
 export * from "./schema/index.js";

@@ -216,6 +216,12 @@ export interface BlockDefinition<Props extends BlockProps = BlockProps> {
    * person editing goes in the field's `placeholder`.
    */
   readonly defaultProps: Props;
+  /**
+   * Events after which a page showing this block is out of date (`match.result_published`…):
+   * the server forgets the cached HTML of every page rendered with the block when one of them
+   * is emitted. For blocks showing data that changes without the page being published again.
+   */
+  readonly dependsOn?: readonly string[];
   /** Renders the block; must stay a pure function of its props (rendered on the server). */
   render(props: BlockRenderProps<Props>): ReactNode;
 }

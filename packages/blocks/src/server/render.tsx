@@ -1,6 +1,12 @@
 import { type ReactNode, Suspense } from "react";
 import type { BlockRegistry } from "../registry.js";
-import type { BlockProps, BlockRenderProps, SlotComponent, SlotProps } from "../types.js";
+import type {
+  BlockDefinition,
+  BlockProps,
+  BlockRenderProps,
+  SlotComponent,
+  SlotProps,
+} from "../types.js";
 import { isRecord, resolveProps } from "./props.js";
 import { sanitizeRichText } from "./sanitize.js";
 
@@ -40,6 +46,11 @@ export interface RenderOptions {
    * {@link BlockComponentError}: the original error is not available).
    */
   readonly onBlockError?: (error: unknown, block: BlockErrorContext) => void;
+  /**
+   * Called for each block of the registry about to render, nested ones included: the server
+   * collects their `dependsOn` to know which events make the page out of date.
+   */
+  readonly onBlockRendered?: (definition: BlockDefinition) => void;
 }
 
 interface BlockEntry {
@@ -149,6 +160,7 @@ function BlockItem({ entry, depth, options }: BlockItemProps): ReactNode {
   if (definition === undefined) {
     return null;
   }
+  options.onBlockRendered?.(definition);
   try {
     const props = resolveProps(definition.fields, entry.props, definition.defaultProps, {
       slot: (items) => slotComponent(items, depth + 1, options),

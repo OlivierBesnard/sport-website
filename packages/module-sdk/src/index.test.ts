@@ -8,12 +8,15 @@ describe("root entry of @sport-cms/module-sdk", () => {
     expect(Object.keys(sdk).sort()).toEqual([
       "ADMIN_PAGE_PATH_PATTERN",
       "MODULE_ID_PATTERN",
+      "MODULE_NAME_PATTERN",
       "checkModuleClient",
       "checkModuleDefinition",
       "defineBlock",
       "defineModule",
       "defineModuleClient",
       "moduleManifestSchema",
+      "nextOccurrence",
+      "parseCron",
       "parseModuleManifest",
       "safeImageUrl",
       "safeLinkUrl",
@@ -43,6 +46,7 @@ describe("root entry of @sport-cms/module-sdk", () => {
       settings: async () => ({ greeting: "salut" }),
       credentials: async () => ({ apiKey: "clé" }),
       kv: { get: async () => undefined, set: async () => {}, delete: async () => false },
+      emit: async () => undefined,
     };
     return Promise.resolve(definition.lifecycle?.onEnable?.(ctx)).then(() => {
       expect(seen).toEqual(["SALUT", 3]);

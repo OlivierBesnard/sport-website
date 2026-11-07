@@ -6,11 +6,14 @@ describe("root entry of @sport-cms/core", () => {
     expect(Object.keys(root).sort()).toEqual([
       "CMS_VERSION",
       "CORE_PERMISSIONS",
+      "EVENT_TYPE_PATTERN",
       "ROLES",
       "ROLE_PERMISSIONS",
       "can",
       "encodePagePath",
       "normalizePagePath",
+      "parseEventSelector",
+      "selectsEvent",
       "slugify",
     ]);
     expect(root).not.toHaveProperty("parseRuntimeConfig");

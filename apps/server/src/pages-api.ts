@@ -2,6 +2,7 @@ import type { BlockRegistry } from "@sport-cms/blocks";
 import { normalizePagePath } from "@sport-cms/core";
 import {
   type Database,
+  emitEvent,
   type JsonObject,
   navigation,
   type PageSeo,
@@ -458,6 +459,12 @@ export function pagesApiRoutes({
           targetType: "page",
           targetId: row.path,
           details: { version },
+        });
+        // In the same transaction (outbox): the event exists if and only if the publication does.
+        emitEvent(db, {
+          type: "page.published",
+          source: "core",
+          payload: { pageId: row.id, path: row.path, version },
         });
       });
     } catch (error) {

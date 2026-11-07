@@ -149,3 +149,63 @@ describe("messages", () => {
     expect(issuesOf(result).join(" ")).not.toMatch(/expected|Invalid/);
   });
 });
+
+describe("events, jobs and webhooks of a module", () => {
+  const base = { id: "club", name: "Club", version: "1.0.0" };
+  const noop = () => undefined;
+
+  function issues(extra: Record<string, unknown>): readonly string[] {
+    const result = checkModuleDefinition({ ...base, ...extra });
+    return result.success ? [] : result.issues;
+  }
+
+  it("accepts subscriptions, emitted events, jobs and webhooks", () => {
+    expect(
+      issues({
+        emits: ["club.member_joined"],
+        on: { "payment.received": noop, "page.published@1": noop },
+        jobs: [{ id: "sync-orders", schedule: "*/30 * * * *", run: noop }],
+        webhooks: { notifications: noop },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses invalid event types and subscriptions, in French", () => {
+    expect(issues({ emits: ["Paiement"] })).toEqual([
+      "emits.0 : Un événement émis s'écrit en mots séparés par des points (ex. « payment.received »).",
+    ]);
+    expect(issues({ on: { "payment.received@v2": noop } }).join(" ")).toContain(
+      "Un abonnement (on) porte sur un type d'événement",
+    );
+    expect(issues({ on: { "payment.received": "noop" } })).toEqual([
+      "on.payment.received : Un abonnement (on) doit être une fonction.",
+    ]);
+  });
+
+  it("refuses an invalid job: identifier, schedule, run, duplicate", () => {
+    expect(issues({ jobs: [{ id: "Sync", schedule: "* * *", run: "x" }] })).toEqual([
+      "jobs.0.id : L'identifiant de la tâche s'écrit en minuscules, chiffres et tirets.",
+      "jobs.0.schedule : La planification « * * * » doit compter 5 champs (minute heure jour mois jour-de-la-semaine).",
+      "jobs.0.run : L'exécution de la tâche (run) doit être une fonction.",
+    ]);
+    const job = { id: "sync", schedule: "0 3 * * *", run: noop };
+    expect(issues({ jobs: [job, job] })).toEqual(["jobs : Une tâche est déclarée deux fois."]);
+  });
+
+  it("refuses an invalid webhook name and a block dependency that is not an event type", () => {
+    expect(issues({ webhooks: { Notifs: noop } }).join(" ")).toContain(
+      "Le nom d'un webhook s'écrit en minuscules",
+    );
+    const block = {
+      type: "club.score",
+      label: "Score",
+      fields: {},
+      defaultProps: {},
+      render: noop,
+      dependsOn: ["matchs"],
+    };
+    expect(issues({ blocks: [block] })).toEqual([
+      "blocks.0.dependsOn.0 : Une dépendance du bloc doit être un type d'événement (ex. « match.updated »).",
+    ]);
+  });
+});

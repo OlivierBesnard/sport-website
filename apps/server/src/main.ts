@@ -16,7 +16,7 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const { config, app, modules, close } = instance;
+  const { config, app, modules, runtime, close } = instance;
   const server = serve({ fetch: app.fetch, port: config.port }, () => {
     console.info(`Site public : ${config.baseUrl} (port ${config.port})`);
     console.info(`Back-office : ${config.baseUrl}/admin`);
@@ -34,12 +34,18 @@ async function main(): Promise<void> {
         ? `Le port ${config.port} est déjà utilisé : choisissez-en un autre avec PORT.`
         : error,
     );
-    close();
+    void runtime.stop().finally(close);
     process.exitCode = 1;
   });
 
+  // Events, scheduled jobs and webhooks run in this process, next to the HTTP server.
+  runtime.start();
+
   const stop = () => {
-    server.close(() => close());
+    // The round in progress ends before the database closes.
+    server.close(() => {
+      void runtime.stop().finally(close);
+    });
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);

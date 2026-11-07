@@ -2,14 +2,17 @@ import type { KeyObject } from "node:crypto";
 import { type BlockDefinition, type BlockRegistry, createBlockRegistry } from "@sport-cms/blocks";
 import {
   type Database,
+  emitEvent,
+  eventDeliveries,
   type JsonObject,
   moduleCredentials,
   moduleKv,
   modules as modulesTable,
+  outboxEvents,
   writeAudit,
 } from "@sport-cms/db";
 import type { JsonValue, ModuleContext, ModuleLogger } from "@sport-cms/module-sdk";
-import { and, eq } from "drizzle-orm";
+import { and, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { CredentialCipher } from "./credentials.js";
 import type { LoadedModule, ModuleLoadFailure, ModuleManifestInfo, ModuleSource } from "./load.js";
@@ -36,6 +39,9 @@ export interface ModuleHostOptions {
   /** Writes the audit entries (`writeAudit` of `@sport-cms/db`; replaceable in tests). */
   readonly audit?: typeof writeAudit;
 }
+
+/** Source of the events the core emits (`outbox_events.source`). */
+export const CORE_EVENT_SOURCE = "core";
 
 /** State of the credentials of a module: never their values. */
 export interface CredentialsView {
@@ -185,6 +191,7 @@ export class ModuleHost {
   readonly #audit: typeof writeAudit;
   readonly #enabled = new Set<string>();
   readonly #pending = new Set<string>();
+  readonly #emitListeners = new Set<() => void>();
   #registry: BlockRegistry | undefined;
 
   constructor(options: ModuleHostOptions) {
@@ -248,6 +255,33 @@ export class ModuleHost {
   /** Whether the module is loaded and enabled. */
   isEnabled(id: string): boolean {
     return this.#modules.has(id) && this.#enabled.has(id);
+  }
+
+  /** The loaded modules that are enabled, by identifier: those whose `on` and `jobs` run. */
+  enabledModules(): LoadedModule[] {
+    return [...this.#modules.values()]
+      .filter((module) => this.#enabled.has(module.manifest.id))
+      .sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
+  }
+
+  /**
+   * Calls `listener` after each event a module emits (`ctx.emit`) or the host emits
+   * (`module.enabled`…): the runtime delivers it without waiting for its next round. Returns
+   * what removes the listener.
+   */
+  onEmit(listener: () => void): () => void {
+    this.#emitListeners.add(listener);
+    return () => this.#emitListeners.delete(listener);
+  }
+
+  #emitted(): void {
+    for (const listener of this.#emitListeners) {
+      try {
+        listener();
+      } catch (error) {
+        this.#logger.error("Erreur d'un écouteur d'événements", error);
+      }
+    }
   }
 
   /** Modules refused at this start. */
@@ -379,6 +413,22 @@ export class ModuleHost {
       }
       this.#db.transaction(() => {
         this.#db.update(modulesTable).set({ enabled: true }).where(eq(modulesTable.id, id)).run();
+        // The module subscribes from now on: its cursor starts after the last event written,
+        // kept when it already has one (enabled again: it catches up what it missed).
+        const last = this.#db
+          .select({ id: max(outboxEvents.id) })
+          .from(outboxEvents)
+          .get();
+        this.#db
+          .insert(eventDeliveries)
+          .values({ subscriber: id, lastEventId: last?.id ?? 0 })
+          .onConflictDoNothing()
+          .run();
+        emitEvent(this.#db, {
+          type: "module.enabled",
+          source: CORE_EVENT_SOURCE,
+          payload: { module: id, version: module.manifest.version },
+        });
         this.#audit(this.#db, {
           actorId,
           action: "modules.enabled",
@@ -392,6 +442,7 @@ export class ModuleHost {
         });
       });
       this.#setEnabled(id, true);
+      this.#emitted();
       return this.#success(id);
     } finally {
       this.#pending.delete(id);
@@ -418,6 +469,11 @@ export class ModuleHost {
     try {
       this.#db.transaction(() => {
         this.#db.update(modulesTable).set({ enabled: false }).where(eq(modulesTable.id, id)).run();
+        emitEvent(this.#db, {
+          type: "module.disabled",
+          source: CORE_EVENT_SOURCE,
+          payload: { module: id, version: view.version },
+        });
         this.#audit(this.#db, {
           actorId,
           action: "modules.disabled",
@@ -427,6 +483,7 @@ export class ModuleHost {
         });
       });
       this.#setEnabled(id, false);
+      this.#emitted();
       const module = this.#modules.get(id);
       if (module !== undefined) {
         try {
@@ -651,6 +708,26 @@ export class ModuleHost {
             .where(and(eq(moduleKv.moduleId, id), eq(moduleKv.key, key)))
             .returning({ key: moduleKv.key })
             .all().length > 0,
+      },
+      emit: async (type, payload, options = {}) => {
+        if (!(module.definition.emits ?? []).includes(type)) {
+          throw new Error(
+            `Le module « ${id} » ne déclare pas l'événement « ${type} » (emits) : il ne peut pas l'émettre.`,
+          );
+        }
+        const eventId = emitEvent(db, {
+          type,
+          source: id,
+          payload,
+          ...(options.version === undefined ? {} : { version: options.version }),
+          ...(options.idempotencyKey === undefined
+            ? {}
+            : { idempotencyKey: options.idempotencyKey }),
+        });
+        if (eventId !== undefined) {
+          this.#emitted();
+        }
+        return eventId;
       },
     };
   }

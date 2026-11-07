@@ -40,6 +40,17 @@ describe("renderPageContent", () => {
     );
   });
 
+  it("reports each block of the registry it renders, nested ones included", () => {
+    const rendered: string[] = [];
+    render(
+      page(heading("a", "Un"), section("s", heading("b", "Deux")), { type: "x.y", props: {} }),
+      {
+        onBlockRendered: (definition) => rendered.push(definition.type),
+      },
+    );
+    expect(rendered).toEqual(["Heading", "Section", "Heading"]);
+  });
+
   it("renders the blocks nested in slots", () => {
     const html = render(page(section("s", heading("h", "Dans la section"))));
     expect(html).toBe(

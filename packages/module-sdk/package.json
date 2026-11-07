@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@sport-cms/blocks": "workspace:*",
+    "@sport-cms/core": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

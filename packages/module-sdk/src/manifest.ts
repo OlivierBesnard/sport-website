@@ -1,4 +1,6 @@
+import { EVENT_TYPE_PATTERN, parseEventSelector } from "@sport-cms/core";
 import { z } from "zod";
+import { parseCron } from "./cron.js";
 import type { ModuleDefinition } from "./define.js";
 
 /** Identifier of a module: lowercase letters and digits, words joined by `-` (`newsletter-brevo`). */
@@ -187,7 +189,41 @@ export const blockSchema = z.looseObject({
   defaultProps: z.record(z.string(), z.unknown(), {
     error: "Les valeurs par défaut du bloc (defaultProps) doivent être un objet.",
   }),
+  dependsOn: z
+    .array(
+      z
+        .string({ error: "Une dépendance du bloc doit être un type d'événement." })
+        .regex(
+          EVENT_TYPE_PATTERN,
+          "Une dépendance du bloc doit être un type d'événement (ex. « match.updated »).",
+        ),
+      { error: "Les dépendances du bloc (dependsOn) doivent être une liste." },
+    )
+    .max(20, "Un bloc déclare au plus 20 dépendances.")
+    .optional(),
   render: fn("Le rendu du bloc (render) doit être une fonction."),
+});
+
+/** Name of a job or of a webhook within its module: lowercase words joined by `-`. */
+export const MODULE_NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+const jobSchema = z.looseObject({
+  id: z
+    .string({ error: "L'identifiant de la tâche doit être un texte." })
+    .max(50, "L'identifiant de la tâche est trop long (50 caractères maximum).")
+    .regex(
+      MODULE_NAME_PATTERN,
+      "L'identifiant de la tâche s'écrit en minuscules, chiffres et tirets.",
+    ),
+  schedule: z
+    .string({ error: "La planification de la tâche doit être un texte." })
+    .superRefine((schedule, context) => {
+      const parsed = parseCron(schedule);
+      if (!parsed.ok) {
+        context.addIssue({ code: "custom", message: parsed.error });
+      }
+    }),
+  run: fn("L'exécution de la tâche (run) doit être une fonction."),
 });
 
 const definitionSchema = z
@@ -200,6 +236,42 @@ const definitionSchema = z
       .array(blockSchema, { error: "Les blocs (blocks) doivent être une liste." })
       .max(100, "Un module déclare au plus 100 blocs.")
       .default([]),
+    emits: z
+      .array(
+        z
+          .string({ error: "Un événement émis doit être un type d'événement." })
+          .regex(
+            EVENT_TYPE_PATTERN,
+            "Un événement émis s'écrit en mots séparés par des points (ex. « payment.received »).",
+          ),
+        { error: "Les événements émis (emits) doivent être une liste." },
+      )
+      .max(100, "Un module émet au plus 100 types d'événements.")
+      .refine(
+        (list) => new Set(list).size === list.length,
+        "Un événement émis est déclaré deux fois.",
+      )
+      .optional(),
+    on: z
+      .record(z.string(), fn("Un abonnement (on) doit être une fonction."), {
+        error: (issue) =>
+          issue.code === "invalid_type" ? "Les abonnements (on) doivent être un objet." : undefined,
+      })
+      .optional(),
+    jobs: z
+      .array(jobSchema, { error: "Les tâches (jobs) doivent être une liste." })
+      .max(20, "Un module déclare au plus 20 tâches.")
+      .refine(
+        (list) => new Set(list.map((job) => job.id)).size === list.length,
+        "Une tâche est déclarée deux fois.",
+      )
+      .optional(),
+    webhooks: z
+      .record(z.string(), fn("Un webhook doit être une fonction."), {
+        error: (issue) =>
+          issue.code === "invalid_type" ? "Les webhooks doivent être un objet." : undefined,
+      })
+      .optional(),
     lifecycle: z
       .looseObject({
         onEnable: fn("lifecycle.onEnable doit être une fonction.").optional(),
@@ -209,6 +281,26 @@ const definitionSchema = z
   })
   .superRefine((definition, context) => {
     checkBlockTypes(definition.id, definition.blocks, context);
+    for (const selector of Object.keys(definition.on ?? {})) {
+      if (parseEventSelector(selector) === undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["on", selector],
+          message:
+            "Un abonnement (on) porte sur un type d'événement, éventuellement suivi de « @version » (ex. « payment.received@1 »).",
+        });
+      }
+    }
+    for (const name of Object.keys(definition.webhooks ?? {})) {
+      if (!MODULE_NAME_PATTERN.test(name)) {
+        context.addIssue({
+          code: "custom",
+          path: ["webhooks", name],
+          message:
+            "Le nom d'un webhook s'écrit en minuscules, chiffres et tirets (ex. « notifications »).",
+        });
+      }
+    }
   });
 
 /**

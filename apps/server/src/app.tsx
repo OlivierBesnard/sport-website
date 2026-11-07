@@ -190,8 +190,10 @@ export function createApp(dependencies: AppDependencies): Hono {
     page: PublishedPage,
     registry: BlockRegistry,
     ticket: CacheTicket,
-  ): { html: string; complete: boolean } {
+  ): { html: string; complete: boolean; dependencies: Set<string> } {
     let complete = true;
+    // Events after which this page is out of date: the `dependsOn` of the blocks it renders.
+    const dependencies = new Set<string>();
     const image = safeImageUrl(page.image);
     const head: PageHead = {
       title: page.title,
@@ -201,6 +203,11 @@ export function createApp(dependencies: AppDependencies): Hono {
     };
     const content = renderPageContent(page.data, {
       registry,
+      onBlockRendered: (definition) => {
+        for (const dependency of definition.dependsOn ?? []) {
+          dependencies.add(dependency);
+        }
+      },
       onBlockError: (error, block) => {
         complete = false;
         if (firstReport(ticket, block.type, block.id)) {
@@ -218,7 +225,7 @@ export function createApp(dependencies: AppDependencies): Hono {
       content,
       readNavigation(db, DEFAULT_MENU),
     );
-    return { html, complete };
+    return { html, complete, dependencies };
   }
 
   const app = new Hono();
@@ -291,9 +298,9 @@ export function createApp(dependencies: AppDependencies): Hono {
     if (page === undefined) {
       return context.notFound();
     }
-    const { html, complete } = renderPage(path, page, registry, ticket);
+    const { html, complete, dependencies } = renderPage(path, page, registry, ticket);
     if (complete) {
-      htmlCache.set(path, html, ticket);
+      htmlCache.set(path, html, ticket, dependencies);
     }
     return sendPage(context, html);
   });

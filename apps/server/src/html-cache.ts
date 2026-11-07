@@ -8,6 +8,8 @@ export interface CacheTicket {
   readonly path: string;
   readonly epoch: number;
   readonly generation: number;
+  /** Count of the dependency invalidations when the ticket was taken. */
+  readonly dependencies: number;
 }
 
 /**
@@ -22,11 +24,21 @@ export interface CacheTicket {
  * has a generation, raised by `invalidate`, and `clear` starts a new epoch. A renderer takes a
  * {@link ticket} before reading the page and passes it to `set`, which drops the HTML when the
  * page was invalidated since.
+ *
+ * A page can also depend on events (`dependsOn` of its blocks: `match.result_published`…): `set`
+ * records them, and `invalidateDependency(type)` forgets every page that depends on it — and
+ * any render of such a page in progress, by the same tickets.
  */
 export class HtmlCache {
   readonly #pages = new Map<string, string>();
   /** Invalidations of each path in the current epoch (paths never invalidated are absent). */
   readonly #generations = new Map<string, number>();
+  /** Pages cached with each dependency, and the dependencies of each cached page. */
+  readonly #dependents = new Map<string, Set<string>>();
+  readonly #dependencies = new Map<string, ReadonlySet<string>>();
+  /** Invalidations by dependency so far, and the count at the last one of each dependency. */
+  #dependencyInvalidations = 0;
+  readonly #invalidatedAt = new Map<string, number>();
   #epoch = 0;
 
   get(path: string): string | undefined {
@@ -40,6 +52,7 @@ export class HtmlCache {
       path: canonical,
       epoch: this.#epoch,
       generation: this.#generations.get(canonical) ?? 0,
+      dependencies: this.#dependencyInvalidations,
     };
   }
 
@@ -47,25 +60,72 @@ export class HtmlCache {
    * Stores the HTML of the page at `path`. With a ticket, only when the page was not invalidated
    * (nor the cache cleared) since the ticket was taken; returns whether the HTML was stored.
    */
-  set(path: string, html: string, ticket?: CacheTicket): boolean {
+  set(
+    path: string,
+    html: string,
+    ticket?: CacheTicket,
+    dependencies: Iterable<string> = [],
+  ): boolean {
     const canonical = normalizePagePath(path);
+    const depends = new Set(dependencies);
     if (
       ticket !== undefined &&
       (ticket.path !== canonical ||
         ticket.epoch !== this.#epoch ||
-        ticket.generation !== (this.#generations.get(canonical) ?? 0))
+        ticket.generation !== (this.#generations.get(canonical) ?? 0) ||
+        [...depends].some(
+          (dependency) => (this.#invalidatedAt.get(dependency) ?? 0) > ticket.dependencies,
+        ))
     ) {
       return false;
     }
+    this.#forgetDependencies(canonical);
     this.#pages.set(canonical, html);
+    if (depends.size > 0) {
+      this.#dependencies.set(canonical, depends);
+      for (const dependency of depends) {
+        let pages = this.#dependents.get(dependency);
+        if (pages === undefined) {
+          pages = new Set();
+          this.#dependents.set(dependency, pages);
+        }
+        pages.add(canonical);
+      }
+    }
     return true;
+  }
+
+  #forgetDependencies(canonical: string): void {
+    for (const dependency of this.#dependencies.get(canonical) ?? []) {
+      const pages = this.#dependents.get(dependency);
+      pages?.delete(canonical);
+      if (pages?.size === 0) {
+        this.#dependents.delete(dependency);
+      }
+    }
+    this.#dependencies.delete(canonical);
   }
 
   /** Forgets the page at `path`, given in any form; returns whether it was cached. */
   invalidate(path: string): boolean {
     const canonical = normalizePagePath(path);
     this.#generations.set(canonical, (this.#generations.get(canonical) ?? 0) + 1);
+    this.#forgetDependencies(canonical);
     return this.#pages.delete(canonical);
+  }
+
+  /**
+   * Forgets every page that depends on `dependency` (an event type), and outdates the renders
+   * in progress that would record it; returns how many pages were forgotten.
+   */
+  invalidateDependency(dependency: string): number {
+    this.#dependencyInvalidations += 1;
+    this.#invalidatedAt.set(dependency, this.#dependencyInvalidations);
+    const pages = [...(this.#dependents.get(dependency) ?? [])];
+    for (const page of pages) {
+      this.invalidate(page);
+    }
+    return pages.length;
   }
 
   /** Forgets every page; the renders in progress will not be stored. */
@@ -73,6 +133,9 @@ export class HtmlCache {
     this.#pages.clear();
     // A new epoch outdates every ticket, so the generations can start over (bounded memory).
     this.#generations.clear();
+    this.#dependents.clear();
+    this.#dependencies.clear();
+    this.#invalidatedAt.clear();
     this.#epoch += 1;
   }
 

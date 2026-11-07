@@ -10,6 +10,12 @@ export {
   type Role,
   type RoleHolder,
 } from "./auth.js";
+export {
+  EVENT_TYPE_PATTERN,
+  type EventSelector,
+  parseEventSelector,
+  selectsEvent,
+} from "./events.js";
 export { encodePagePath, normalizePagePath } from "./page-path.js";
 export { slugify } from "./slugify.js";
 export { CMS_VERSION } from "./version.js";

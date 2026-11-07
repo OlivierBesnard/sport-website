@@ -1,4 +1,11 @@
-import { auditLog, type Database, type JsonObject, pages, pageVersions } from "@sport-cms/db";
+import {
+  auditLog,
+  type Database,
+  type JsonObject,
+  outboxEvents,
+  pages,
+  pageVersions,
+} from "@sport-cms/db";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type ApiHarness, createApiHarness, sampleData } from "./api-testing.js";
@@ -315,6 +322,38 @@ describe("POST /api/pages/publish?path=", () => {
     expect(body).toMatchObject({ status: "published", published: true, version: 1 });
     const versions = db.select({ version: pageVersions.version }).from(pageVersions).all();
     expect(versions).toHaveLength(1);
+  });
+
+  it("emits page.published in the outbox, once per publication", async () => {
+    await createPage("/le-club", "Le club", sampleData());
+    await publish("/le-club");
+    await publish("/le-club");
+    const page = db.select({ id: pages.id }).from(pages).get();
+    expect(
+      db
+        .select({
+          type: outboxEvents.type,
+          source: outboxEvents.source,
+          payload: outboxEvents.payload,
+        })
+        .from(outboxEvents)
+        .all(),
+    ).toEqual([
+      {
+        type: "page.published",
+        source: "core",
+        payload: { pageId: page?.id, path: "/le-club", version: 1 },
+      },
+      {
+        type: "page.published",
+        source: "core",
+        payload: { pageId: page?.id, path: "/le-club", version: 2 },
+      },
+    ]);
+    // A refused publication emits nothing.
+    await createPage("/vide", "Vide");
+    await publish("/vide");
+    expect(db.select().from(outboxEvents).all()).toHaveLength(2);
   });
 
   it("refuses a page without exactly one level 1 heading, in French", async () => {

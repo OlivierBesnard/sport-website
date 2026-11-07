@@ -38,17 +38,30 @@ export {
   defineModuleClient,
   type ModuleClientDefinition,
 } from "./client.js";
-export type { ModuleContext, ModuleKv, ModuleLogger } from "./context.js";
+export type {
+  EmitOptions,
+  JobRun,
+  ModuleContext,
+  ModuleEvent,
+  ModuleKv,
+  ModuleLogger,
+  WebhookRequest,
+} from "./context.js";
+export { type CronParse, type CronSchedule, nextOccurrence, parseCron } from "./cron.js";
 export {
   type DataProcessing,
   defineModule,
+  type EventHandler,
+  type JobDefinition,
   type ModuleDefinition,
   type ModuleLifecycle,
+  type WebhookHandler,
 } from "./define.js";
 export type { JsonObject, JsonValue } from "./json.js";
 export {
   checkModuleDefinition,
   MODULE_ID_PATTERN,
+  MODULE_NAME_PATTERN,
   type ModuleCheck,
   type ModuleManifest,
   moduleManifestSchema,

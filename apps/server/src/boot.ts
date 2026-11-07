@@ -2,12 +2,19 @@ import { join } from "node:path";
 import { coreBlocks } from "@sport-cms/blocks";
 import type { RuntimeConfig, RuntimeEnv } from "@sport-cms/core/config";
 import type { Database } from "@sport-cms/db";
-import { type HostLogger, loadModules, ModuleHost } from "@sport-cms/module-loader";
+import {
+  type EventSubscriber,
+  type HostLogger,
+  loadModules,
+  ModuleHost,
+  ModuleRuntime,
+} from "@sport-cms/module-loader";
 import type { Hono } from "hono";
 import { adminBuildDirectory, adminRoutes } from "./admin.js";
 import { createApp } from "./app.js";
 import { createAuth } from "./auth/create-auth.js";
 import { authRoutes } from "./auth/routes.js";
+import { hooksRoutes } from "./hooks.js";
 import { HtmlCache } from "./html-cache.js";
 import { openInstance } from "./instance.js";
 import { type ModuleClientFiles, moduleClientFiles, moduleClientRoutes } from "./module-clients.js";
@@ -15,6 +22,7 @@ import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { officialModuleClients, officialModules } from "./official-modules.js";
 import { pagesApiRoutes } from "./pages-api.js";
+import { webhooksApiRoutes } from "./webhooks-api.js";
 
 /** Directory of `DATA_DIR` holding the installed modules, one directory each. */
 export const MODULES_DIRECTORY = "modules";
@@ -47,7 +55,26 @@ export interface BootedInstance {
   readonly app: Hono;
   readonly htmlCache: HtmlCache;
   readonly modules: ModuleHost;
+  /**
+   * The scheduler (events, jobs, webhooks): not started by `bootInstance` (the tests drive it
+   * with `tick()`); the entry point starts it, and stops it before `close()`.
+   */
+  readonly runtime: ModuleRuntime;
   close(): void;
+}
+
+/**
+ * Consumer of the core: forgets the cached pages whose blocks depend on the event
+ * (`dependsOn`). The cache lives in memory: after a restart, the events replayed find it empty.
+ */
+export function htmlCacheSubscriber(htmlCache: HtmlCache): EventSubscriber {
+  return {
+    name: "core:html-cache",
+    accepts: () => true,
+    handle: async (event) => {
+      htmlCache.invalidateDependency(event.type);
+    },
+  };
 }
 
 /**
@@ -102,6 +129,13 @@ export async function bootInstance(
     const auth = createAuth({ db, baseUrl: config.baseUrl, secretKey, logger });
     const htmlCache = new HtmlCache();
     const blocks = () => modules.blocks();
+    const runtime = new ModuleRuntime({
+      db,
+      host: modules,
+      coreSubscribers: [htmlCacheSubscriber(htmlCache)],
+      logger,
+    });
+    const wake = () => runtime.wake();
     const adminDirectory = options.adminDirectory ?? adminBuildDirectory();
     const app = createApp({
       db,
@@ -118,9 +152,11 @@ export async function bootInstance(
         pagesApiRoutes({ auth, db, blocks, htmlCache, logger })(routes);
         navigationApiRoutes({ auth, db, htmlCache, logger })(routes);
         modulesApiRoutes({ auth, modules, htmlCache })(routes);
+        webhooksApiRoutes({ auth, db, onReplayed: wake })(routes);
+        hooksRoutes({ db, modules, logger, onReceived: wake })(routes);
       },
     });
-    return { config, db, app, htmlCache, modules, close: () => db.$client.close() };
+    return { config, db, app, htmlCache, modules, runtime, close: () => db.$client.close() };
   } catch (error) {
     db.$client.close();
     throw error;
