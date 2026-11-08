@@ -56,6 +56,7 @@ describe("root entry of @sport-cms/core", () => {
   });
 
   it("gives the version of the CMS in semver form", () => {
-    expect(root.CMS_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    // Written by `pnpm release`: a release (1.4.0) or a beta (1.5.0-beta.1).
+    expect(root.CMS_VERSION).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
   });
 });

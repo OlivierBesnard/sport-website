@@ -150,10 +150,27 @@ export async function stageRelease(options: StageOptions): Promise<string> {
   try {
     await download(url, archive, releasePackage.size, releasePackage.sha256, options);
     await mkdir(staging);
+    // Plain files and directories only (`pnpm release` writes nothing else): a link could
+    // point outside the version's directory.
+    let refused = false;
     try {
-      await extract({ file: archive, cwd: staging, strict: true });
+      await extract({
+        file: archive,
+        cwd: staging,
+        strict: true,
+        filter: (_path, entry) => {
+          const plain = "type" in entry && (entry.type === "File" || entry.type === "Directory");
+          refused ||= !plain;
+          return plain;
+        },
+      });
     } catch {
       throw new InstallError(`Le paquet de la version ${release.version} est illisible.`);
+    }
+    if (refused) {
+      throw new InstallError(
+        `Le paquet de la version ${release.version} contient des liens ou des fichiers spéciaux : il a été ignoré.`,
+      );
     }
     await readAppDescriptor(staging, release.version);
     await rename(staging, target);

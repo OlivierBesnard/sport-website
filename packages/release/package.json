@@ -1,0 +1,24 @@
+{
+  "name": "@sport-cms/release",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Publication des releases (pnpm release) : paquets applicatifs signés, release GitHub, manifeste sur GitHub Pages",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sport-cms/supervisor": "workspace:*",
+    "semver": "^7.8.6",
+    "tar": "^7.5.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@sport-cms/config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/semver": "^7.8.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

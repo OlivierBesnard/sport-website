@@ -419,6 +419,37 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  packages/release:
+    dependencies:
+      '@sport-cms/supervisor':
+        specifier: workspace:*
+        version: link:../../apps/supervisor
+      semver:
+        specifier: ^7.8.6
+        version: 7.8.6
+      tar:
+        specifier: ^7.5.2
+        version: 7.5.22
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@sport-cms/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
   packages/themes:
     devDependencies:
       '@sport-cms/config':

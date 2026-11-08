@@ -16,7 +16,8 @@
     "build": "turbo run build",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "test:e2e": "turbo run build && playwright test",
-    "db:generate": "pnpm --filter @sport-cms/db db:generate"
+    "db:generate": "pnpm --filter @sport-cms/db db:generate",
+    "release": "turbo run build --filter=@sport-cms/release --output-logs=errors-only && node packages/release/dist/cli.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",
