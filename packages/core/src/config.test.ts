@@ -62,7 +62,15 @@ describe("parseRuntimeConfig defaults", () => {
     const env = Object.freeze({ PORT: "8080", NODE_ENV: "production", HOME: "/home/club" });
     const config = parseRuntimeConfig(env);
     expect(env).toEqual({ PORT: "8080", NODE_ENV: "production", HOME: "/home/club" });
-    expect(Object.keys(config).sort()).toEqual(["baseUrl", "dataDir", "port", "secretKey"]);
+    expect(Object.keys(config).sort()).toEqual([
+      "adminDir",
+      "baseUrl",
+      "dataDir",
+      "host",
+      "port",
+      "secretKey",
+      "trustProxy",
+    ]);
     expect(Object.isFrozen(config)).toBe(true);
   });
 });
@@ -222,5 +230,33 @@ describe("RuntimeConfigError", () => {
 
   it("reports a variable only once", () => {
     expect(invalidVariables({ PORT: "99999999999999999999" })).toEqual(["PORT"]);
+  });
+});
+
+describe("HOST, TRUST_PROXY and ADMIN_DIR", () => {
+  it("default to every interface, no trusted proxy and the build beside the server", () => {
+    const config = parseRuntimeConfig({});
+    expect(config.host).toBeUndefined();
+    expect(config.trustProxy).toBe(false);
+    expect(config.adminDir).toBeUndefined();
+  });
+
+  it("are read when set", () => {
+    const config = parseRuntimeConfig({
+      HOST: " 127.0.0.1 ",
+      TRUST_PROXY: "TRUE",
+      ADMIN_DIR: "build/admin",
+    });
+    expect(config.host).toBe("127.0.0.1");
+    expect(config.trustProxy).toBe(true);
+    expect(config.adminDir).toBe(resolve("build/admin"));
+    expect(parseRuntimeConfig({ TRUST_PROXY: "0" }).trustProxy).toBe(false);
+    expect(parseRuntimeConfig({ HOST: "::1" }).host).toBe("::1");
+  });
+
+  it("are refused when invalid, in French", () => {
+    expect(() => parseRuntimeConfig({ TRUST_PROXY: "oui", HOST: "a b" })).toThrow(
+      /HOST doit être une adresse d'écoute[\s\S]*TRUST_PROXY doit valoir true ou false/,
+    );
   });
 });

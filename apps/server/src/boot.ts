@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { coreBlocks } from "@sport-cms/blocks";
 import type { RuntimeConfig, RuntimeEnv } from "@sport-cms/core/config";
@@ -25,6 +26,7 @@ import { navigationApiRoutes } from "./navigation-api.js";
 import { officialModuleClients, officialModules } from "./official-modules.js";
 import { pagesApiRoutes } from "./pages-api.js";
 import { sportApiRoutes } from "./sport/api.js";
+import { updatesApiRoutes } from "./updates-api.js";
 import { webhooksApiRoutes } from "./webhooks-api.js";
 
 /** Directory of `DATA_DIR` holding the installed modules, one directory each. */
@@ -47,7 +49,7 @@ export interface BootOptions {
   readonly cmsVersion?: string;
   /** Where the server reports errors (`console` by default). */
   readonly logger?: HostLogger;
-  /** Directory of the back-office build (`apps/admin/dist` by default). */
+  /** Directory of the back-office build (`ADMIN_DIR`, otherwise `apps/admin/dist`). */
   readonly adminDirectory?: string;
 }
 
@@ -139,7 +141,14 @@ export async function bootInstance(
       logger,
     });
     const wake = () => runtime.wake();
-    const adminDirectory = options.adminDirectory ?? adminBuildDirectory();
+    const adminDirectory = options.adminDirectory ?? config.adminDir ?? adminBuildDirectory();
+    if (!existsSync(join(adminDirectory, "index.html"))) {
+      // The back-office would answer 503: said once at startup rather than discovered later.
+      logger.warn?.(
+        `Back-office introuvable dans ${adminDirectory} : lancez « pnpm build » ou réglez ADMIN_DIR.`,
+      );
+    }
+    const { trustProxy } = config;
     const app = createApp({
       db,
       baseUrl: config.baseUrl,
@@ -147,11 +156,12 @@ export async function bootInstance(
       htmlCache,
       blocks,
       logger,
+      background: () => (runtime.running ? "running" : "stopped"),
       routes: (routes) => {
         // Before the back-office: its catch-all route would answer `/admin/_modules/*`.
         moduleClientRoutes({ auth, modules, clients, logger })(routes);
         adminRoutes({ directory: adminDirectory, logger })(routes);
-        authRoutes({ auth, db, logger })(routes);
+        authRoutes({ auth, db, logger, trustProxy })(routes);
         pagesApiRoutes({ auth, db, blocks, htmlCache, logger })(routes);
         navigationApiRoutes({ auth, db, htmlCache, logger })(routes);
         modulesApiRoutes({ auth, modules, htmlCache })(routes);
@@ -159,7 +169,8 @@ export async function bootInstance(
         blockDataApiRoutes({ auth, db })(routes);
         contentApiRoutes({ auth, db, dataDir: config.dataDir, logger, onEmitted: wake })(routes);
         webhooksApiRoutes({ auth, db, onReplayed: wake })(routes);
-        hooksRoutes({ db, modules, logger, onReceived: wake })(routes);
+        hooksRoutes({ db, modules, logger, onReceived: wake, trustProxy })(routes);
+        updatesApiRoutes({ auth, db, dataDir: config.dataDir })(routes);
       },
     });
     return { config, db, app, htmlCache, modules, runtime, close: () => db.$client.close() };

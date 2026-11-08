@@ -17,16 +17,23 @@ async function main(): Promise<void> {
   }
 
   const { config, app, modules, runtime, close } = instance;
-  const server = serve({ fetch: app.fetch, port: config.port }, () => {
-    console.info(`Site public : ${config.baseUrl} (port ${config.port})`);
-    console.info(`Back-office : ${config.baseUrl}/admin`);
-    console.info(`Données : ${config.dataDir}`);
-    const available = modules.list().filter((module) => module.status === "available");
-    console.info(
-      `Modules : ${available.length} chargé(s), ${modules.failures().length} refusé(s)` +
-        (available.length > 0 ? ` (${available.map((module) => module.id).join(", ")})` : ""),
-    );
-  });
+  const server = serve(
+    {
+      fetch: app.fetch,
+      port: config.port,
+      ...(config.host === undefined ? {} : { hostname: config.host }),
+    },
+    () => {
+      console.info(`Site public : ${config.baseUrl} (port ${config.port})`);
+      console.info(`Back-office : ${config.baseUrl}/admin`);
+      console.info(`Données : ${config.dataDir}`);
+      const available = modules.list().filter((module) => module.status === "available");
+      console.info(
+        `Modules : ${available.length} chargé(s), ${modules.failures().length} refusé(s)` +
+          (available.length > 0 ? ` (${available.map((module) => module.id).join(", ")})` : ""),
+      );
+    },
+  );
 
   server.on("error", (error: NodeJS.ErrnoException) => {
     console.error(

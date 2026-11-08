@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type JsonObject, pages } from "@sport-cms/db";
@@ -157,5 +157,70 @@ describe("bootInstance", () => {
     await expect(start()).rejects.toThrow(/SECRET_KEY est requise/);
     // The database file is closed: the directory can be removed (Windows locks open files).
     expect(() => rmSync(dataDir, { recursive: true, force: true })).not.toThrow();
+  });
+});
+
+describe("behind the supervisor", () => {
+  it("reports its version and background tasks to the health check", async () => {
+    const instance = await start();
+    expect(await (await instance.app.request("/health")).json()).toMatchObject({
+      status: "ok",
+      background: "stopped",
+    });
+    instance.runtime.start();
+    expect(await (await instance.app.request("/health")).json()).toMatchObject({
+      background: "running",
+    });
+    await instance.runtime.stop();
+  });
+
+  it("serves the back-office from ADMIN_DIR, and warns when the build is missing", async () => {
+    const adminDir = join(dataDir, "build-admin");
+    mkdirSync(adminDir);
+    writeFileSync(join(adminDir, "index.html"), "<!DOCTYPE html><title>Back-office</title>");
+    env.ADMIN_DIR = adminDir;
+    const instance = await bootInstance(env, { logger });
+    started.push(instance);
+    const response = await instance.app.request("/admin/");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Back-office");
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    env.ADMIN_DIR = join(dataDir, "absent");
+    stop(instance);
+    started.push(await bootInstance(env, { logger }));
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Back-office introuvable dans"),
+    );
+  });
+
+  it("trusts x-forwarded-for for the rate limits only with TRUST_PROXY", {
+    timeout: 30_000,
+  }, async () => {
+    const signIn = (instance: BootedInstance, address: string) =>
+      instance.app.request("/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "x-forwarded-for": address,
+        },
+        body: JSON.stringify({ email: "personne@monclub.example", password: "mauvais-mot" }),
+      });
+    async function limitedAfterOtherAddresses(instance: BootedInstance): Promise<boolean> {
+      // 10 attempts a minute per address: the 11th is refused when they share one.
+      for (let attempt = 0; attempt < 11; attempt += 1) {
+        if ((await signIn(instance, `203.0.113.${attempt}`)).status === 429) {
+          return true;
+        }
+      }
+      return false;
+    }
+    // Without the flag, every attempt counts for the same (socket) address.
+    expect(await limitedAfterOtherAddresses(await start())).toBe(true);
+    env.TRUST_PROXY = "true";
+    const behind = await bootInstance(env, { logger, adminDirectory: dataDir });
+    started.push(behind);
+    expect(await limitedAfterOtherAddresses(behind)).toBe(false);
   });
 });

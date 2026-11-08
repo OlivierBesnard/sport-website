@@ -21,6 +21,7 @@ import { CalendarPage } from "./routes/sport/CalendarPage";
 import { SeasonsPage } from "./routes/sport/SeasonsPage";
 import { TeamsPage } from "./routes/sport/TeamsPage";
 import { VenuesPage } from "./routes/sport/VenuesPage";
+import { UpdatesPage } from "./routes/UpdatesPage";
 
 /**
  * State of the back-office, decided once at load and after every auth change: a fresh
@@ -115,6 +116,7 @@ export function App() {
           <Route path="sport/saisons" element={<SeasonsPage />} />
           <Route path="sport/lieux" element={<VenuesPage />} />
           <Route path="modules" element={<ModulesPage />} />
+          <Route path="mises-a-jour" element={<UpdatesPage />} />
           <Route path="modules/:id/*" element={<ModuleAdminPage user={boot.user} />} />
           <Route
             path="reglages"

@@ -58,7 +58,7 @@ Le serveur lit sa configuration dans les variables d'environnement :
 
 ## Organisation
 
-- `apps/` : applications ; `server` sert le site public et le back-office, `admin` est l'interface du back-office (le superviseur est à venir)
+- `apps/` : applications ; `server` sert le site public et le back-office, `admin` est l'interface du back-office, `supervisor` reçoit le trafic devant le serveur et installe les mises à jour signées (`pnpm --filter @sport-cms/supervisor start`, variables `PORT`, `APP_PORT`, `BUNDLED_APP`, `UPDATE_MANIFEST_URL`, `UPDATE_PUBLIC_KEY`, `BEHIND_PROXY`)
 - `packages/` : paquets partagés (`config` pour les configurations TypeScript, `core` pour le noyau et la configuration d'exécution, `db` pour la base SQLite et ses migrations, `blocks` pour les blocs de page et leur rendu, `themes` pour les thèmes et les styles du site)
 - `modules/` : modules officiels, à venir
 

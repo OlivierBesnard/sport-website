@@ -58,6 +58,13 @@ const MENU: readonly {
   },
   { to: "/sport/lieux", label: "Lieux", enabled: true, end: true, permissions: ["sport.manage"] },
   { to: "/modules", label: "Modules", enabled: true, end: true, permissions: ["modules.manage"] },
+  {
+    to: "/mises-a-jour",
+    label: "Mises à jour",
+    enabled: true,
+    end: true,
+    permissions: ["settings.manage"],
+  },
   { to: "/reglages", label: "Réglages", enabled: false, end: false },
 ];
 

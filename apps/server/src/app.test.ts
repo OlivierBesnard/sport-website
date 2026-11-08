@@ -1,5 +1,6 @@
 import { createSecretKey, randomBytes } from "node:crypto";
 import { coreBlocks, createBlockRegistry, defineBlock } from "@sport-cms/blocks";
+import { CMS_VERSION } from "@sport-cms/core";
 import {
   createTestDatabase,
   type Database,
@@ -98,9 +99,17 @@ describe("GET /health", () => {
   it("answers ok once the database responds", async () => {
     const response = await app().request("/health");
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "ok" });
+    expect(await response.json()).toEqual({ status: "ok", version: CMS_VERSION });
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expectSecurityHeaders(response);
+  });
+
+  it("reports the background tasks when told how", async () => {
+    let running = false;
+    const server = app({ background: () => (running ? "running" : "stopped") });
+    expect(await (await server.request("/health")).json()).toMatchObject({ background: "stopped" });
+    running = true;
+    expect(await (await server.request("/health")).json()).toMatchObject({ background: "running" });
   });
 
   it("answers 503 when the database does not respond", async () => {

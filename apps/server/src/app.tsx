@@ -7,6 +7,7 @@ import {
 } from "@sport-cms/blocks";
 import { loadPageBlocks, renderPageContent } from "@sport-cms/blocks/server";
 import {
+  CMS_VERSION,
   type ContentReader,
   encodePagePath,
   normalizePagePath,
@@ -65,6 +66,11 @@ export interface AppDependencies {
   readonly content?: ContentReader;
   /** Clock of the rendering ("upcoming" matches are relative to it). */
   readonly now?: () => Date;
+  /**
+   * State of the background tasks (events, jobs, webhooks), reported by `/health`: the
+   * supervisor only keeps a new version whose tasks run. Absent: not reported.
+   */
+  readonly background?: () => "running" | "stopped";
   /**
    * Registers the other routes of the instance (API, back-office, webhooks…), matched before the
    * public site, whose pages answer any other path. They get the security headers (unless they
@@ -135,7 +141,8 @@ function sendPage(context: Context, html: string): Response {
  * by `routes`. Everything it uses is passed in, so tests can build it on a test database and call
  * `app.request()`.
  *
- * - `GET /health`: `{ "status": "ok" }` once the database answers, 503 otherwise.
+ * - `GET /health`: `{ "status": "ok", "version", "background"? }` once the database answers,
+ *   503 otherwise (the supervisor checks a new version with it).
  * - routes registered by `routes`.
  * - `GET /assets/theme.<hash>.css`: stylesheet of the site (theme variables and block styles).
  * - `GET <path>`: published page at that path, rendered on the server and cached; a variant of a
@@ -143,7 +150,14 @@ function sendPage(context: Context, html: string): Response {
  *   to its canonical form; any other request gets the 404 page.
  */
 export function createApp(dependencies: AppDependencies): Hono {
-  const { db, baseUrl, htmlCache = new HtmlCache(), logger = console, routes } = dependencies;
+  const {
+    db,
+    baseUrl,
+    htmlCache = new HtmlCache(),
+    logger = console,
+    routes,
+    background,
+  } = dependencies;
   const now = dependencies.now ?? (() => new Date());
   const sport = dependencies.sport ?? createSportReader(db, now);
   const contentReader = dependencies.content ?? createContentReader(db, now);
@@ -290,7 +304,11 @@ export function createApp(dependencies: AppDependencies): Hono {
     context.header("Cache-Control", "no-store");
     try {
       db.$client.prepare("SELECT 1").pluck().get();
-      return context.json({ status: "ok" });
+      return context.json({
+        status: "ok",
+        version: CMS_VERSION,
+        ...(background === undefined ? {} : { background: background() }),
+      });
     } catch (error) {
       logger.error("Contrôle de santé : la base de données ne répond pas", error);
       return context.json({ status: "unavailable" }, 503);

@@ -23,6 +23,7 @@ import { modulesApiRoutes } from "./modules-api.js";
 import { navigationApiRoutes } from "./navigation-api.js";
 import { pagesApiRoutes } from "./pages-api.js";
 import { sportApiRoutes } from "./sport/api.js";
+import { updatesApiRoutes } from "./updates-api.js";
 
 /**
  * Test helpers for the admin API of the pages, the navigation and the modules: the sessions come
@@ -84,6 +85,7 @@ export function createApiHarness(options: ApiHarnessOptions = {}): ApiHarness {
     sportApiRoutes({ auth, db, logger })(app);
     blockDataApiRoutes({ auth, db })(app);
     contentApiRoutes({ auth, db, dataDir, logger })(app);
+    updatesApiRoutes({ auth, db, dataDir })(app);
   };
 
   const harness: ApiHarness = {

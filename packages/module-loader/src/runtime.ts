@@ -94,6 +94,11 @@ export class ModuleRuntime {
     });
   }
 
+  /** `true` between `start()` and `stop()`. */
+  get running(): boolean {
+    return !this.#stopped;
+  }
+
   /** Starts the loop (and runs a first round now). */
   start(): void {
     if (!this.#stopped) {
